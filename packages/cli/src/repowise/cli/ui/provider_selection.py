@@ -45,6 +45,8 @@ _PROVIDER_DEFAULTS: dict[str, str] = {
     "claude_cli": "claude_cli/claude-haiku-4-5",
     "opencode": "opencode/default",
     "ollama": "qwen3.5:4b",
+    "omlx": "Qwen3.5-9B-MTPLX-Optimized-Speed",
+    "aigw": "glm-coding-flash",
     "openrouter": "google/gemini-3.5-flash-lite",
     "litellm": "groq/llama-3.1-70b-versatile",
 }
@@ -60,6 +62,8 @@ _PROVIDER_ENV: dict[str, str] = {
     "claude_cli": "__CLAUDE_CLI__",
     "opencode": "__OPENCODE_CLI__",
     "ollama": "OLLAMA_BASE_URL",
+    "omlx": "OMLX_BASE_URL",
+    "aigw": "AIGW_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     # The picker iterates this map, so a provider missing here never renders a
     # row no matter what `_PROVIDER_DEFAULTS` says. litellm was in the defaults
@@ -92,10 +96,13 @@ _PROVIDER_NOTES: dict[str, str] = {
     "claude_cli": "uses your Claude Code login",
     "opencode": "uses your opencode CLI setup",
     "ollama": "runs on your machine, no key",
+    "omlx": "runs on your machine, no key",
+    "aigw": "local gateway to remote models",
     "litellm": "proxy in front of another provider",
 }
 
 _OLLAMA_DEFAULT_BASE_URL = "http://localhost:11434"
+_OMLX_DEFAULT_BASE_URL = "http://localhost:11434"
 # The OpenAI adapter is also the generic adapter for local gateways. Keep the
 # official endpoint as the prompt default, while letting a user replace it
 # inline with a vLLM/SGLang/9router URL without exporting another env var first.
@@ -153,17 +160,21 @@ def ollama_base_url() -> str:
     return os.environ.get("OLLAMA_BASE_URL") or _OLLAMA_DEFAULT_BASE_URL
 
 
-def _ollama_endpoint() -> tuple[str, int] | None:
-    """``(host, port)`` for the configured Ollama URL, or ``None`` if unusable.
+def omlx_base_url() -> str:
+    """Where the picker expects to find the omlx server."""
+    return os.environ.get("OMLX_BASE_URL") or _OMLX_DEFAULT_BASE_URL
 
-    A bare ``host:port`` is accepted, since that is a natural thing to put in
-    ``OLLAMA_BASE_URL`` and urlparse would otherwise read the host as a scheme.
+
+def _tcp_endpoint(raw: str, default_port: int) -> tuple[str, int] | None:
+    """``(host, port)`` for *raw*, or ``None`` if unusable.
+
+    A bare ``host:port`` is accepted, since that is a natural thing to put in a
+    base-URL env var and urlparse would otherwise read the host as a scheme.
     Anything with no host left after that (``unix://…``, plain junk with a
     scheme) has no TCP endpoint to probe, and must not silently fall back to
     localhost: that reports someone's typo'd remote box as ready and defers the
     failure to the first generation call.
     """
-    raw = ollama_base_url().strip()
     if "://" not in raw:
         raw = f"http://{raw}"
     try:
@@ -176,7 +187,17 @@ def _ollama_endpoint() -> tuple[str, int] | None:
         return None
     if not host:
         return None
-    return host, port or (443 if parsed.scheme == "https" else 11434)
+    return host, port or (443 if parsed.scheme == "https" else default_port)
+
+
+def _ollama_endpoint() -> tuple[str, int] | None:
+    """``(host, port)`` for the configured Ollama URL, or ``None`` if unusable."""
+    return _tcp_endpoint(ollama_base_url().strip(), 11434)
+
+
+def _omlx_endpoint() -> tuple[str, int] | None:
+    """``(host, port)`` for the configured omlx URL, or ``None`` if unusable."""
+    return _tcp_endpoint(omlx_base_url().strip(), 11434)
 
 
 def _detect_ollama_status() -> bool:
@@ -193,6 +214,23 @@ def _detect_ollama_status() -> bool:
     try:
         # gaierror and timeout are both OSError subclasses, so a bad host or a
         # black-holed address ends up here rather than escaping.
+        with socket.create_connection(endpoint, timeout=_OLLAMA_PROBE_TIMEOUT_S):
+            return True
+    except OSError:
+        return False
+
+
+def _detect_omlx_status() -> bool:
+    """Return ``True`` if something is listening at the omlx endpoint.
+
+    Same probe as Ollama's: omlx takes no key, so readiness is a listening
+    socket, not an env var. (Both default to port 11434, so the probe cannot
+    tell them apart when either listens — env-based resolution is unaffected.)
+    """
+    endpoint = _omlx_endpoint()
+    if endpoint is None:
+        return False
+    try:
         with socket.create_connection(endpoint, timeout=_OLLAMA_PROBE_TIMEOUT_S):
             return True
     except OSError:
@@ -226,6 +264,9 @@ def _detect_provider_status() -> dict[str, str]:
         elif prov == "ollama":
             if _detect_ollama_status():
                 status[prov] = ollama_base_url()
+        elif prov == "omlx":
+            if _detect_omlx_status():
+                status[prov] = omlx_base_url()
         elif prov == "openai":
             if openai_has_key and openai_base_url in ("", _OPENAI_DEFAULT_BASE_URL):
                 status[prov] = env_var
@@ -309,6 +350,28 @@ def _ollama_setup_lines() -> list[str]:
     return lines
 
 
+def _omlx_setup_lines() -> list[str]:
+    base_url = omlx_base_url()
+    lines = [
+        "  [bold]omlx[/bold] serves local models behind an OpenAI-compatible "
+        "endpoint. No key needed.",
+        "",
+    ]
+    if _omlx_endpoint() is None:
+        lines.append(
+            f"  [{WARN}]OMLX_BASE_URL is set to {base_url!r}, which is not a "
+            f"host repowise can reach.[/] Expected something like "
+            f"[{BRAND}]http://localhost:11434[/]."
+        )
+        return lines
+    lines.append(
+        f"  [{WARN}]Nothing is listening at {base_url}.[/] Start the omlx server, "
+        f"then retry."
+    )
+    lines.append("  [dim]Set OMLX_BASE_URL if it listens somewhere else.[/dim]")
+    return lines
+
+
 # Providers with no API key to paste: they authenticate out of band or run
 # locally, so readiness is a probe and the remedy is a command, never a prompt.
 # ``registry.KEYLESS_PROVIDERS`` is the resolution-side version of this idea; it
@@ -319,6 +382,7 @@ _LOCAL_PROVIDER_SETUP: dict[str, Callable[[], list[str]]] = {
     "claude_cli": _claude_cli_setup_lines,
     "opencode": _opencode_setup_lines,
     "ollama": _ollama_setup_lines,
+    "omlx": _omlx_setup_lines,
 }
 
 

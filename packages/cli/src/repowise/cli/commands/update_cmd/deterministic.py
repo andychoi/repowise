@@ -43,7 +43,7 @@ def deterministic_embedder_name(cfg: dict) -> str:
     # Nothing was chosen, so whatever resolve_embedder returns was inferred
     # from a key. Only the ones that cannot bill survive that.
     resolved = resolve_embedder(None)
-    return resolved if resolved in ("mock", "ollama") else "mock"
+    return resolved if resolved in ("mock", "ollama", "omlx") else "mock"
 
 
 def load_prior_page_ids(repo_path: Path) -> dict:

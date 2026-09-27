@@ -405,6 +405,13 @@ def _prompt_git(console: Console, scan: RepoScanInfo | None, result: dict[str, A
     )
 
 
+# Embedder names the interactive prompts accept. Kept beside the prompts they
+# feed: a new embedder ships only when both lists — and _resolve_embedder_from_env
+# below — know it.
+ADVANCED_EMBEDDER_CHOICES = ["gemini", "openai", "openrouter", "ollama", "omlx", "edenai", "mock"]
+INDEX_ONLY_EMBEDDER_CHOICES = ["mock", "ollama", "omlx", "gemini", "openai", "openrouter", "edenai"]
+
+
 def _prompt_generation(
     console: Console,
     scan: RepoScanInfo | None,
@@ -450,7 +457,7 @@ def _prompt_generation(
 
     # Embedder selection
     detected_embedder = _resolve_embedder_from_env()
-    embedder_choices = ["gemini", "openai", "openrouter", "ollama", "edenai", "mock"]
+    embedder_choices = ADVANCED_EMBEDDER_CHOICES
     result["embedder"] = click.prompt(
         "  Embedder for RAG",
         default=detected_embedder,
@@ -638,13 +645,13 @@ def _prompt_index_only_search(console: Console, result: dict[str, Any]) -> None:
         console,
         "Search",
         "Full-text search always works. Semantic search needs an embedder;\n"
-        "  ollama is the keyless one, and the hosted ones charge per page.",
+        "  ollama and omlx are keyless, and the hosted ones charge per page.",
     )
     console.print()
     result["embedder"] = click.prompt(
         "  Embedder for semantic search (mock = full-text only)",
         default="mock",
-        type=click.Choice(["mock", "ollama", "gemini", "openai", "openrouter", "edenai"]),
+        type=click.Choice(INDEX_ONLY_EMBEDDER_CHOICES),
     )
 
 
@@ -658,6 +665,8 @@ def _resolve_embedder_from_env() -> str:
         return "openrouter"
     if os.environ.get("OLLAMA_EMBEDDING_MODEL"):
         return "ollama"
+    if os.environ.get("OMLX_EMBEDDING_MODEL"):
+        return "omlx"
     # Last, like the shared resolver in cli/providers/embedders.py: an unrelated
     # EDENAI_API_KEY in the environment must not outrank a provider the user was
     # already resolving to.

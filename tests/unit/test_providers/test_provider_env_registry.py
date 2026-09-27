@@ -153,6 +153,16 @@ def test_required_envs_is_the_endpoint_for_ollama():
     assert provider_required_envs("ollama") == ("OLLAMA_BASE_URL",)
 
 
+def test_required_envs_is_the_endpoint_for_omlx():
+    """omlx mirrors ollama: no key, but the endpoint makes autodetect deliberate."""
+    assert provider_required_envs("omlx") == ("OMLX_BASE_URL",)
+
+
+def test_required_envs_is_the_key_for_aigw():
+    """aigw is a keyed provider like deepseek — its key is what autodetects it."""
+    assert provider_required_envs("aigw") == ("AIGW_API_KEY",)
+
+
 def test_required_envs_is_empty_for_the_agent_clis():
     assert provider_required_envs("codex_cli") == ()
     assert provider_required_envs("opencode") == ()

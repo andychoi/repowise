@@ -83,6 +83,8 @@ _FALLBACK_PRICING: dict[str, float] = {"input": 3.0, "output": 15.0}
 _LOCAL_MODEL_PREFIXES: tuple[str, ...] = (
     "ollama/",
     "ollama_chat/",
+    "omlx/",
+    "aigw/",
     "local/",
     "lmstudio/",
     "llamacpp/",

@@ -11,6 +11,7 @@ registry to instantiate an embedder by name.
 Built-in embedders:
     openai  — text-embedding-3-small (1536d), text-embedding-3-large (3072d)
     gemini  — gemini-embedding-001 (768d, up to 3072d)
+    omlx    — Qwen3-Embedding-0.6B-4bit-DWQ via a local omlx server (1024d, keyless)
     mock    — KeylessEmbedder: what a no-key index embeds with (zero deps)
 """
 

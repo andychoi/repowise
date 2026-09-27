@@ -17,6 +17,8 @@ Built-in providers:
     kimi       — kimi-for-coding, kimi-for-coding-highspeed, and K2.x models
     edenai     — many vendors (mistral/gpt/claude/gemini) via Eden AI's EU gateway
     ollama     — local inference (llama3.2, codellama, etc.)
+    omlx       — local OpenAI-compatible OMLX server, no API key
+    aigw       — local OpenAI-compatible gateway to remote models (AIGW_API_KEY)
     litellm    — 100+ providers via LiteLLM proxy
     codex_cli  — local authenticated Codex CLI via codex exec
     claude_cli — local authenticated Claude Code CLI via claude -p

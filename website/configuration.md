@@ -196,6 +196,46 @@ Any model available in your local Ollama installation can be used.
 
 ---
 
+### omlx (local)
+
+Run a local OpenAI-compatible OMLX-served model without any API key.
+
+```bash
+export OMLX_BASE_URL="http://localhost:11434"   # default; /v1 is appended if missing
+```
+
+```bash
+repowise init --provider omlx --model Qwen3.5-9B-MTPLX-Optimized-Speed
+```
+
+The server's chat models are listed at setup time (embedding models are
+filtered out). No API key is needed; if the server enforces one, set
+`OMLX_API_KEY`.
+
+omlx also serves embeddings for semantic search —
+`repowise init --provider omlx --embedder omlx` uses
+`Qwen3-Embedding-0.6B-4bit-DWQ` (1024 dimensions). See the
+[omlx provider page](omlx.md).
+
+---
+
+### aigw (local gateway)
+
+One key for many models through your own OpenAI-compatible gateway.
+
+```bash
+export AIGW_API_KEY="..."
+repowise init --provider aigw --model glm-coding-flash
+```
+
+The default base URL is `http://localhost:11433/v1`; `AIGW_BASE_URL` points it
+elsewhere and is used verbatim (include the `/v1` suffix). If the gateway does
+not implement `/v1/models`, the model listing falls back to the configured
+model. Repowise records `aigw/*` generations at $0.00 — the gateway meters the
+real upstream spend itself. See the [aigw provider page](aigw.md).
+
+---
+
 ### LiteLLM (100+ providers)
 
 LiteLLM acts as a proxy supporting OpenAI, Azure, Cohere, Mistral, and dozens more.
@@ -253,7 +293,7 @@ If you don't pass `--provider`, repowise detects your provider by checking:
 
 1. `REPOWISE_PROVIDER` environment variable
 2. `provider` in `.repowise/config.yaml`
-3. API key environment variables, in order: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY`
+3. API key environment variables, in order: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `AIGW_API_KEY` → `OMLX_BASE_URL`
 
 Codex CLI is intentionally explicit: pass `--provider codex_cli` or set `REPOWISE_PROVIDER=codex_cli`. Similarly, OpenCode is detected automatically when on `PATH` but can be explicitly selected with `--provider opencode` or `REPOWISE_PROVIDER=opencode`.
 
@@ -267,6 +307,7 @@ Embeddings power semantic search via the vector index. The embedder is separate 
 |----------|---------|-------|
 | `gemini` | `GEMINI_API_KEY` | Default when key is present |
 | `openai` | `OPENAI_API_KEY` | OpenAI text-embedding-3-small |
+| `omlx` | `OMLX_EMBEDDING_MODEL` | Local omlx embeddings, no API key |
 | `mock` | — | Dummy embeddings, no semantic search |
 
 ```bash
@@ -344,6 +385,9 @@ repowise also writes a `.mcp.json` at the repository root for Claude Code auto-d
 | `KIMI_API_KEY` | Kimi API key |
 | `KIMI_BASE_URL` | Override the Kimi API base URL |
 | `OLLAMA_BASE_URL` | Ollama server URL (default: `http://localhost:11434`) |
+| `OMLX_BASE_URL` | omlx server URL (default: `http://localhost:11434`; `/v1` appended if missing) |
+| `AIGW_API_KEY` | aigw gateway API key |
+| `AIGW_BASE_URL` | aigw gateway URL (default: `http://localhost:11433/v1`, used verbatim) |
 | `LITELLM_API_KEY` | LiteLLM proxy key |
 | `REPOWISE_PROVIDER` | Override provider (skips auto-detection) |
 | `REPOWISE_DB_URL` | Use PostgreSQL instead of SQLite (e.g., `postgresql+asyncpg://...`) |

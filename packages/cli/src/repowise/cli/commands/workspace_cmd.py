@@ -464,6 +464,8 @@ def _resolve_docs_flag(
         "DEEPSEEK_API_KEY",
         "KIMI_API_KEY",
         "OLLAMA_BASE_URL",
+        "OMLX_BASE_URL",
+        "AIGW_API_KEY",
     ):
         if _os.environ.get(key):
             return True, None

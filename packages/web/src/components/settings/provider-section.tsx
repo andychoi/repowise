@@ -26,8 +26,8 @@ import {
  * drifted -- `codex_cli` and `openrouter` are in the server catalog and were
  * never added here, so neither could be picked from this page.
  */
-const FALLBACK_PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "kimi", "edenai", "claude_cli", "opencode", "ollama", "litellm", "mock"] as const;
-const EMBEDDERS = ["mock", "gemini", "openai", "openrouter", "edenai", "ollama"] as const;
+const FALLBACK_PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "kimi", "edenai", "claude_cli", "opencode", "ollama", "omlx", "aigw", "litellm", "mock"] as const;
+const EMBEDDERS = ["mock", "gemini", "openai", "openrouter", "edenai", "ollama", "omlx"] as const;
 
 // Real, registerable providers the server catalog deliberately leaves out.
 // `mock` is a keyless test provider (`KEYLESS_PROVIDERS` in the registry) that
@@ -45,6 +45,8 @@ const MODEL_PLACEHOLDERS: Record<string, string> = {
   claude_cli: "claude_cli/claude-haiku-4-5",
   opencode: "opencode/default",
   ollama: "qwen3.5:4b",
+  omlx: "Qwen3.5-9B-MTPLX-Optimized-Speed",
+  aigw: "glm-coding-flash",
   litellm: "groq/llama-3.1-70b-versatile",
   mock: "mock",
 };
@@ -54,6 +56,8 @@ const PROVIDER_ENV_VARS: Record<string, { vars: string[]; installHint: string }>
   openai: { vars: ["OPENAI_API_KEY"], installHint: "pip install openai" },
   anthropic: { vars: ["ANTHROPIC_API_KEY"], installHint: "pip install anthropic" },
   ollama: { vars: ["OLLAMA_BASE_URL"], installHint: "https://ollama.ai" },
+  omlx: { vars: ["OMLX_BASE_URL"], installHint: "local OpenAI-compatible server on http://localhost:11434" },
+  aigw: { vars: ["AIGW_API_KEY"], installHint: "pip install openai (OpenAI-compatible gateway on http://localhost:11433/v1)" },
   deepseek: { vars: ["DEEPSEEK_API_KEY"], installHint: "pip install openai" },
   kimi: { vars: ["KIMI_API_KEY"], installHint: "pip install openai" },
   edenai: { vars: ["EDENAI_API_KEY"], installHint: "pip install openai" },
@@ -74,6 +78,7 @@ const EMBEDDER_ENV_VARS: Record<string, string[]> = {
   openrouter: ["OPENROUTER_API_KEY"],
   edenai: ["EDENAI_API_KEY"],
   ollama: ["OLLAMA_BASE_URL"],
+  omlx: ["OMLX_BASE_URL"],
   mock: [],
 };
 
