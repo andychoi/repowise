@@ -128,6 +128,14 @@ PROVIDER_CATALOG: list[dict[str, Any]] = [
         "requires_key": False,
     },
     {
+        "id": "aigw",
+        "name": "aigw (Local gateway)",
+        "default_model": "glm-coding-flash",
+        "models": ["glm-coding-flash"],
+        "env_keys": ["AIGW_API_KEY"],
+        "requires_key": True,
+    },
+    {
         "id": "litellm",
         "name": "LiteLLM",
         "default_model": "groq/llama-3.1-70b-versatile",

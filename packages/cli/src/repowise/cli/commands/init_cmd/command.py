@@ -510,7 +510,7 @@ def _interactive_gate(
     default=None,
     help=(
         "LLM provider name (anthropic, openai, openrouter, gemini, "
-        "deepseek, kimi, ollama, omlx, litellm, codex_cli, claude_cli, "
+        "deepseek, kimi, ollama, omlx, aigw, litellm, codex_cli, claude_cli, "
         "opencode, edenai, mock). "
         "In a terminal, a missing key is prompted for; openai also asks for "
         "an optional OpenAI-compatible Base URL."

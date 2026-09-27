@@ -46,6 +46,7 @@ _PROVIDER_DEFAULTS: dict[str, str] = {
     "opencode": "opencode/default",
     "ollama": "qwen3.5:4b",
     "omlx": "Qwen3.5-9B-MTPLX-Optimized-Speed",
+    "aigw": "glm-coding-flash",
     "openrouter": "google/gemini-3.5-flash-lite",
     "litellm": "groq/llama-3.1-70b-versatile",
 }
@@ -62,6 +63,7 @@ _PROVIDER_ENV: dict[str, str] = {
     "opencode": "__OPENCODE_CLI__",
     "ollama": "OLLAMA_BASE_URL",
     "omlx": "OMLX_BASE_URL",
+    "aigw": "AIGW_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     # The picker iterates this map, so a provider missing here never renders a
     # row no matter what `_PROVIDER_DEFAULTS` says. litellm was in the defaults
@@ -95,6 +97,7 @@ _PROVIDER_NOTES: dict[str, str] = {
     "opencode": "uses your opencode CLI setup",
     "ollama": "runs on your machine, no key",
     "omlx": "runs on your machine, no key",
+    "aigw": "local gateway to remote models",
     "litellm": "proxy in front of another provider",
 }
 

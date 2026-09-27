@@ -137,7 +137,7 @@ You can edit this file directly. Changes take effect on the next `init`,
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `provider` | auto-detected | `anthropic`, `openai`, `gemini`, `openrouter`, `deepseek`, `kimi`, `ollama`, `omlx`, `litellm`, `opencode` |
+| `provider` | auto-detected | `anthropic`, `openai`, `gemini`, `openrouter`, `deepseek`, `kimi`, `ollama`, `omlx`, `aigw`, `litellm`, `opencode` |
 | `model` | provider default | Model identifier passed to the provider |
 | `embedder` | `mock` | `openai`, `gemini`, `ollama`, `omlx`, `openrouter`, `edenai`, `mock` |
 | `embedding_model` | provider default | Embedding model identifier |
@@ -816,6 +816,22 @@ vectors, declared natively — the API's `dimensions` parameter is never sent.
 override the model, width, and per-request timeout, each falling back to its
 `REPOWISE_EMBEDDING_*` counterpart.
 
+### aigw (local gateway, one key for many models)
+
+```bash
+export AIGW_API_KEY="..."
+repowise init --provider aigw --model glm-coding-flash
+```
+
+aigw is a local OpenAI-compatible gateway fronting remote models, so one key
+reaches everything it routes. The default base URL is
+`http://localhost:11433/v1`; `AIGW_BASE_URL` points it elsewhere and is used
+verbatim (include the `/v1` suffix). If the gateway does not implement
+`/v1/models`, the model listing falls back to the configured model.
+
+Repowise records `aigw/*` generations at $0.00: the gateway meters the real
+upstream spend itself, so double-billing it here would misstate actual cost.
+
 ### LiteLLM (100+ providers)
 
 ```bash
@@ -877,7 +893,7 @@ order:
 
 1. `REPOWISE_PROVIDER` environment variable
 2. `provider` in `.repowise/config.yaml`
-3. API key env vars: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `OMLX_BASE_URL`
+3. API key env vars: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `AIGW_API_KEY` → `OMLX_BASE_URL`
 
 ---
 
@@ -943,6 +959,7 @@ The `.repowise/.env` file is gitignored automatically.
 | `DEEPSEEK_API_KEY` | DeepSeek API key |
 | `KIMI_API_KEY` | Kimi API key |
 | `LITELLM_API_KEY` | LiteLLM proxy key |
+| `AIGW_API_KEY` | aigw gateway API key |
 | `LITELLM_API_BASE` | LiteLLM proxy base URL |
 
 ### Provider base URLs
@@ -956,6 +973,7 @@ The `.repowise/.env` file is gitignored automatically.
 | `REPOWISE_OLLAMA_NUM_CTX` | Fixed Ollama context window; unset sizes it to each prompt |
 | `OLLAMA_NUM_PARALLEL` | Ollama requests repowise sends at once (default: 1) |
 | `OMLX_BASE_URL` | omlx server URL (default: `http://localhost:11434`; `/v1` appended if missing) |
+| `AIGW_BASE_URL` | aigw gateway URL (default: `http://localhost:11433/v1`, used verbatim) |
 | `DEEPSEEK_BASE_URL` | Override the DeepSeek API base URL |
 | `KIMI_BASE_URL` | Override the Kimi API base URL |
 | `LITELLM_BASE_URL` | Override the LiteLLM proxy base URL |

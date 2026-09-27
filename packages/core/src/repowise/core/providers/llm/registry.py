@@ -13,6 +13,7 @@ Built-in providers:
     - edenai      → EdenAIProvider
     - ollama      → OllamaProvider
     - omlx        → OmlxProvider
+    - aigw        → AigwProvider
     - litellm     → LiteLLMProvider
     - codex_cli   → CodexCliProvider
     - claude_cli  → ClaudeCliProvider
@@ -54,6 +55,7 @@ _BUILTIN_PROVIDERS: dict[str, tuple[str, str]] = {
     "gemini": ("repowise.core.providers.llm.gemini", "GeminiProvider"),
     "ollama": ("repowise.core.providers.llm.ollama", "OllamaProvider"),
     "omlx": ("repowise.core.providers.llm.omlx", "OmlxProvider"),
+    "aigw": ("repowise.core.providers.llm.aigw", "AigwProvider"),
     "litellm": ("repowise.core.providers.llm.litellm", "LiteLLMProvider"),
     "deepseek": ("repowise.core.providers.llm.deepseek", "DeepSeekProvider"),
     "kimi": ("repowise.core.providers.llm.kimi", "KimiProvider"),
@@ -80,6 +82,7 @@ PROVIDER_API_KEY_ENVS: dict[str, tuple[str, ...]] = {
     "deepseek": ("DEEPSEEK_API_KEY",),
     "kimi": ("KIMI_API_KEY",),
     "edenai": ("EDENAI_API_KEY",),
+    "aigw": ("AIGW_API_KEY",),
     "litellm": ("LITELLM_API_KEY",),
 }
 
@@ -94,6 +97,7 @@ PROVIDER_BASE_URL_ENVS: dict[str, tuple[str, ...]] = {
     "edenai": ("EDENAI_BASE_URL",),
     "ollama": ("OLLAMA_BASE_URL",),
     "omlx": ("OMLX_BASE_URL",),
+    "aigw": ("AIGW_BASE_URL",),
     "litellm": ("LITELLM_BASE_URL", "LITELLM_API_BASE"),
 }
 
@@ -128,6 +132,7 @@ PROVIDER_AUTODETECT_ORDER: tuple[str, ...] = (
     # and an unrelated EDENAI_API_KEY in the environment must not silently take
     # over from a provider the user was already resolving to.
     "edenai",
+    "aigw",
     "omlx",
 )
 
@@ -339,6 +344,7 @@ def get_provider(
             "gemini": "google-genai",
             "ollama": "openai",  # ollama uses the openai package
             "omlx": "openai",  # omlx uses the openai package
+            "aigw": "openai",  # aigw uses the openai package
             "openrouter": "openai",  # openrouter uses the openai package
             "deepseek": "openai",  # deepseek uses the openai package
             "kimi": "openai",  # kimi uses the openai package

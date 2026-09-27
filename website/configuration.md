@@ -219,6 +219,23 @@ omlx also serves embeddings for semantic search —
 
 ---
 
+### aigw (local gateway)
+
+One key for many models through your own OpenAI-compatible gateway.
+
+```bash
+export AIGW_API_KEY="..."
+repowise init --provider aigw --model glm-coding-flash
+```
+
+The default base URL is `http://localhost:11433/v1`; `AIGW_BASE_URL` points it
+elsewhere and is used verbatim (include the `/v1` suffix). If the gateway does
+not implement `/v1/models`, the model listing falls back to the configured
+model. Repowise records `aigw/*` generations at $0.00 — the gateway meters the
+real upstream spend itself. See the [aigw provider page](aigw.md).
+
+---
+
 ### LiteLLM (100+ providers)
 
 LiteLLM acts as a proxy supporting OpenAI, Azure, Cohere, Mistral, and dozens more.
@@ -276,7 +293,7 @@ If you don't pass `--provider`, repowise detects your provider by checking:
 
 1. `REPOWISE_PROVIDER` environment variable
 2. `provider` in `.repowise/config.yaml`
-3. API key environment variables, in order: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `OMLX_BASE_URL`
+3. API key environment variables, in order: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `AIGW_API_KEY` → `OMLX_BASE_URL`
 
 Codex CLI is intentionally explicit: pass `--provider codex_cli` or set `REPOWISE_PROVIDER=codex_cli`. Similarly, OpenCode is detected automatically when on `PATH` but can be explicitly selected with `--provider opencode` or `REPOWISE_PROVIDER=opencode`.
 
@@ -369,6 +386,8 @@ repowise also writes a `.mcp.json` at the repository root for Claude Code auto-d
 | `KIMI_BASE_URL` | Override the Kimi API base URL |
 | `OLLAMA_BASE_URL` | Ollama server URL (default: `http://localhost:11434`) |
 | `OMLX_BASE_URL` | omlx server URL (default: `http://localhost:11434`; `/v1` appended if missing) |
+| `AIGW_API_KEY` | aigw gateway API key |
+| `AIGW_BASE_URL` | aigw gateway URL (default: `http://localhost:11433/v1`, used verbatim) |
 | `LITELLM_API_KEY` | LiteLLM proxy key |
 | `REPOWISE_PROVIDER` | Override provider (skips auto-detection) |
 | `REPOWISE_DB_URL` | Use PostgreSQL instead of SQLite (e.g., `postgresql+asyncpg://...`) |

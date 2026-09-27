@@ -84,6 +84,7 @@ _LOCAL_MODEL_PREFIXES: tuple[str, ...] = (
     "ollama/",
     "ollama_chat/",
     "omlx/",
+    "aigw/",
     "local/",
     "lmstudio/",
     "llamacpp/",

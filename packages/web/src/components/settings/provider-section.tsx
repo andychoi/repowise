@@ -26,7 +26,7 @@ import {
  * drifted -- `codex_cli` and `openrouter` are in the server catalog and were
  * never added here, so neither could be picked from this page.
  */
-const FALLBACK_PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "kimi", "edenai", "claude_cli", "opencode", "ollama", "omlx", "litellm", "mock"] as const;
+const FALLBACK_PROVIDERS = ["gemini", "openai", "anthropic", "deepseek", "kimi", "edenai", "claude_cli", "opencode", "ollama", "omlx", "aigw", "litellm", "mock"] as const;
 const EMBEDDERS = ["mock", "gemini", "openai", "openrouter", "edenai", "ollama", "omlx"] as const;
 
 // Real, registerable providers the server catalog deliberately leaves out.
@@ -46,6 +46,7 @@ const MODEL_PLACEHOLDERS: Record<string, string> = {
   opencode: "opencode/default",
   ollama: "qwen3.5:4b",
   omlx: "Qwen3.5-9B-MTPLX-Optimized-Speed",
+  aigw: "glm-coding-flash",
   litellm: "groq/llama-3.1-70b-versatile",
   mock: "mock",
 };
@@ -56,6 +57,7 @@ const PROVIDER_ENV_VARS: Record<string, { vars: string[]; installHint: string }>
   anthropic: { vars: ["ANTHROPIC_API_KEY"], installHint: "pip install anthropic" },
   ollama: { vars: ["OLLAMA_BASE_URL"], installHint: "https://ollama.ai" },
   omlx: { vars: ["OMLX_BASE_URL"], installHint: "local OpenAI-compatible server on http://localhost:11434" },
+  aigw: { vars: ["AIGW_API_KEY"], installHint: "pip install openai (OpenAI-compatible gateway on http://localhost:11433/v1)" },
   deepseek: { vars: ["DEEPSEEK_API_KEY"], installHint: "pip install openai" },
   kimi: { vars: ["KIMI_API_KEY"], installHint: "pip install openai" },
   edenai: { vars: ["EDENAI_API_KEY"], installHint: "pip install openai" },

@@ -66,6 +66,8 @@ PROVIDER_DEFAULTS: dict[str, RateLimitConfig] = {
     "ollama": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=10_000_000),
     # omlx runs locally too — same shape as ollama
     "omlx": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=10_000_000),
+    # aigw fronts remote models through a local gateway — kimi's shape
+    "aigw": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=5_000_000),
     "litellm": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=2_000_000),
     "deepseek": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=5_000_000),
     "kimi": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=5_000_000),
