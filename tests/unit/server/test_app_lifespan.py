@@ -573,6 +573,7 @@ def embedder_env(monkeypatch):
     ("backend", "target", "model_env", "expected_kwargs"),
     [
         ("ollama", "ollama.OllamaEmbedder", None, {}),
+        ("omlx", "omlx.OmlxEmbedder", None, {}),
         ("OpenAI", "openai.OpenAIEmbedder", None, {"model": "text-embedding-3-small"}),
         ("openai", "openai.OpenAIEmbedder", "text-embedding-3-large", {"model": "text-embedding-3-large"}),
         (

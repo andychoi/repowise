@@ -28,6 +28,7 @@ def _no_ambient_keys(monkeypatch: pytest.MonkeyPatch) -> None:
         "OPENAI_API_KEY",
         "OPENROUTER_API_KEY",
         "OLLAMA_EMBEDDING_MODEL",
+        "OMLX_EMBEDDING_MODEL",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -53,6 +54,12 @@ class TestDeterministicEmbedderName:
         # The keyless one: running it costs nothing, so inferring it is fine.
         monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
         assert deterministic_embedder_name({}) == "ollama"
+
+    def test_omlx_needs_no_permission_too(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        # The second keyless one: same no-bill rule as ollama, not a downgrade
+        # to mock behind the user's back.
+        monkeypatch.setenv("OMLX_EMBEDDING_MODEL", "Qwen3-Embedding-0.6B-4bit-DWQ")
+        assert deterministic_embedder_name({}) == "omlx"
 
     def test_nothing_configured_is_mock(self) -> None:
         assert deterministic_embedder_name({}) == "mock"

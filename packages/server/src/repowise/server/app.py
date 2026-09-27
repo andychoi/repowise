@@ -118,12 +118,18 @@ def _build_embedder():
         openai     — OpenAIEmbedder via OPENAI_API_KEY env var
         openrouter — OpenRouterEmbedder via OPENROUTER_API_KEY env var
         edenai     — EdenAIEmbedder via EDENAI_API_KEY env var
+        ollama     — OllamaEmbedder via a local Ollama server (no API key)
+        omlx       — OmlxEmbedder via a local omlx server (no API key)
     """
     name = os.environ.get("REPOWISE_EMBEDDER", "mock").lower()
     if name == "ollama":
         from repowise.core.providers.embedding.ollama import OllamaEmbedder
 
         return OllamaEmbedder()
+    if name == "omlx":
+        from repowise.core.providers.embedding.omlx import OmlxEmbedder
+
+        return OmlxEmbedder()
     if name == "gemini":
         return _gemini_embedder()
     if name == "openai":
@@ -143,7 +149,7 @@ def _build_embedder():
         return EdenAIEmbedder(model=model)
     logger.warning(
         "embedder.mock_active: set REPOWISE_EMBEDDER=gemini, openai, openrouter, "
-        "ollama, or edenai for real RAG"
+        "ollama, omlx, or edenai for real RAG"
     )
     return KeylessEmbedder()
 

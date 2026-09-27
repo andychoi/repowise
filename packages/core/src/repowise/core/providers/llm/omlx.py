@@ -46,8 +46,10 @@ def _normalize_base_url(url: str) -> str:
 
 
 def _is_chat_model(model_id: str) -> bool:
-    """The /v1/models listing also names the embedding model; keep chat ids only."""
-    return "embedding" not in model_id.lower()
+    """The /v1/models listing also names the embedding model and a reranker;
+    keep chat ids only — either would fail at generation if picked here."""
+    lowered = model_id.lower()
+    return not any(t in lowered for t in ("embedding", "rerank"))
 
 
 def _omlx_notes(model_id: str, reasoning_modes: tuple[ReasoningMode, ...]) -> str:

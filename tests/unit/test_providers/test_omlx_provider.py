@@ -74,7 +74,8 @@ def test_interactive_timeout_is_ollamas_local_budget():
 
 
 def test_available_model_options_filter_embedding_ids(monkeypatch):
-    """The /v1/models listing also names the embedding model; keep chat ids."""
+    """The /v1/models listing also names the embedding model and a reranker;
+    keep chat ids only — a reranker picked as a chat model fails at generation."""
 
     class FakeResponse:
         def raise_for_status(self) -> None:
@@ -85,6 +86,7 @@ def test_available_model_options_filter_embedding_ids(monkeypatch):
                 "data": [
                     {"id": _DEFAULT_MODEL},
                     {"id": "Qwen3-Embedding-0.6B-4bit-DWQ"},
+                    {"id": "gte-reranker-modernbert-base-mlx"},
                 ]
             }
 
