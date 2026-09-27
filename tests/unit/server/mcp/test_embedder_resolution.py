@@ -39,6 +39,10 @@ _EMBEDDER_ENV_VARS = (
     "OLLAMA_BASE_URL",
     "OLLAMA_EMBEDDING_MODEL",
     "OLLAMA_EMBEDDING_DIMS",
+    "OMLX_BASE_URL",
+    "OMLX_API_KEY",
+    "OMLX_EMBEDDING_MODEL",
+    "OMLX_EMBEDDING_DIMS",
 )
 
 
@@ -120,6 +124,23 @@ def test_ollama_resolves_without_api_key(monkeypatch):
     assert _state._embedder_status == {
         "active": "ollama",
         "requested": "ollama",
+        "degraded": False,
+    }
+
+
+def test_omlx_resolves_without_api_key(monkeypatch):
+    """omlx is keyless like ollama: the embedder builds from env alone."""
+    from repowise.core.providers.embedding.omlx import OmlxEmbedder
+
+    monkeypatch.setenv("REPOWISE_EMBEDDER", "omlx")
+    monkeypatch.setenv("OMLX_EMBEDDING_MODEL", "Qwen3-Embedding-0.6B-4bit-DWQ")
+
+    embedder = _server._resolve_embedder()
+
+    assert isinstance(embedder, OmlxEmbedder)
+    assert _state._embedder_status == {
+        "active": "omlx",
+        "requested": "omlx",
         "degraded": False,
     }
 
@@ -258,6 +279,7 @@ def test_process_env_key_wins_over_persisted(monkeypatch, tmp_path):
 def test_keyless_embedder_needs_no_persisted_lookup(monkeypatch):
     """Embedders outside the keyed map resolve without touching the config files."""
     assert _server._persisted_embedder_key("ollama") is None
+    assert _server._persisted_embedder_key("omlx") is None
     assert _server._persisted_embedder_key("mock") is None
 
 

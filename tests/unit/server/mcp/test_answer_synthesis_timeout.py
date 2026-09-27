@@ -158,7 +158,7 @@ def test_agent_cli_providers_get_more_than_the_old_thirty_seconds(name):
     assert cls.interactive_timeout_s > 30.0
 
 
-@pytest.mark.parametrize("name", ["ollama", "litellm"])
+@pytest.mark.parametrize("name", ["ollama", "omlx", "litellm"])
 def test_local_and_proxied_providers_get_more_than_thirty_seconds(name):
     """Generation speed is the user's own hardware, or an unknown backend."""
     cls = _load_provider_class(name)
@@ -181,6 +181,7 @@ def test_every_builtin_provider_has_a_deliberate_budget():
         "edenai": 60.0,
         "mock": 60.0,
         "ollama": 120.0,
+        "omlx": 120.0,
         "litellm": 120.0,
         "codex_cli": 180.0,
         "claude_cli": 180.0,

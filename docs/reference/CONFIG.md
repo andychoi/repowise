@@ -137,9 +137,9 @@ You can edit this file directly. Changes take effect on the next `init`,
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `provider` | auto-detected | `anthropic`, `openai`, `gemini`, `openrouter`, `deepseek`, `kimi`, `ollama`, `litellm`, `opencode` |
+| `provider` | auto-detected | `anthropic`, `openai`, `gemini`, `openrouter`, `deepseek`, `kimi`, `ollama`, `omlx`, `litellm`, `opencode` |
 | `model` | provider default | Model identifier passed to the provider |
-| `embedder` | `mock` | `openai`, `gemini`, `ollama`, `openrouter`, `edenai`, `mock` |
+| `embedder` | `mock` | `openai`, `gemini`, `ollama`, `omlx`, `openrouter`, `edenai`, `mock` |
 | `embedding_model` | provider default | Embedding model identifier |
 | `reasoning` | `auto` | `auto`, `off`, `none`, `minimal`, `low`, `medium`, `high`, `xhigh`, `max` |
 | `max_tokens` | `16384` | Maximum output tokens requested for each model-written documentation page |
@@ -790,6 +790,32 @@ pin it instead, for example to stay within a machine's memory. Requests are sent
 one at a time; if the server runs with `OLLAMA_NUM_PARALLEL` above 1, set the
 same value where you run repowise to send that many at once.
 
+### omlx (local, no API key)
+
+```bash
+export OMLX_BASE_URL="http://localhost:11434"
+repowise init --provider omlx --model Qwen3.5-9B-MTPLX-Optimized-Speed
+```
+
+omlx is a local OpenAI-compatible server; repowise appends `/v1` to
+`OMLX_BASE_URL` when it is missing. The server's chat models are listed at
+setup time (embedding models are filtered out of that listing). No API key is
+needed; if the server enforces one, set `OMLX_API_KEY`. Explicit `--reasoning`
+values fail before any call rather than being ignored — thinking stays at the
+server default.
+
+omlx also serves the embedder for semantic search:
+
+```bash
+repowise init --provider omlx --embedder omlx
+```
+
+The default model `Qwen3-Embedding-0.6B-4bit-DWQ` produces 1024-dimensional
+vectors, declared natively — the API's `dimensions` parameter is never sent.
+`OMLX_EMBEDDING_MODEL`, `OMLX_EMBEDDING_DIMS`, and `OMLX_EMBEDDING_TIMEOUT`
+override the model, width, and per-request timeout, each falling back to its
+`REPOWISE_EMBEDDING_*` counterpart.
+
 ### LiteLLM (100+ providers)
 
 ```bash
@@ -851,7 +877,7 @@ order:
 
 1. `REPOWISE_PROVIDER` environment variable
 2. `provider` in `.repowise/config.yaml`
-3. API key env vars: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY`
+3. API key env vars: `ANTHROPIC_API_KEY` → `OPENAI_API_KEY` → `OPENROUTER_API_KEY` → `OLLAMA_BASE_URL` → `GEMINI_API_KEY` → `DEEPSEEK_API_KEY` → `KIMI_API_KEY` → `EDENAI_API_KEY` → `OMLX_BASE_URL`
 
 ---
 
@@ -865,6 +891,7 @@ The embedder is separate from the LLM provider.
 | `openai` | `OPENAI_API_KEY` | OpenAI `text-embedding-3-small` |
 | `openrouter` | `OPENROUTER_API_KEY` | Routed through OpenRouter |
 | `ollama` | `OLLAMA_EMBEDDING_MODEL` | Local Ollama embeddings, no API key |
+| `omlx` | `OMLX_EMBEDDING_MODEL` | Local omlx embeddings, no API key |
 | `mock` | n/a | Dummy embeddings, no semantic search (default when no key is detected) |
 
 ```bash
@@ -886,7 +913,7 @@ store would be rebuilt from scratch, discarding what the reindex just built.
 `REPOWISE_EMBEDDING_MODEL` overrides the model for whichever embedder is
 active. `REPOWISE_EMBEDDING_DIMS` and `REPOWISE_EMBEDDING_TIMEOUT` apply the
 same way; the provider-prefixed variants below (`OPENAI_*`, `GEMINI_*`,
-`OLLAMA_*`, `OPENROUTER_*`, `EDENAI_*`) narrow a setting to one embedder and take
+`OLLAMA_*`, `OMLX_*`, `OPENROUTER_*`, `EDENAI_*`) narrow a setting to one embedder and take
 precedence over the shared name.
 
 ---
@@ -928,6 +955,7 @@ The `.repowise/.env` file is gitignored automatically.
 | `OLLAMA_BASE_URL` | Ollama server URL (default: `http://localhost:11434`) |
 | `REPOWISE_OLLAMA_NUM_CTX` | Fixed Ollama context window; unset sizes it to each prompt |
 | `OLLAMA_NUM_PARALLEL` | Ollama requests repowise sends at once (default: 1) |
+| `OMLX_BASE_URL` | omlx server URL (default: `http://localhost:11434`; `/v1` appended if missing) |
 | `DEEPSEEK_BASE_URL` | Override the DeepSeek API base URL |
 | `KIMI_BASE_URL` | Override the Kimi API base URL |
 | `LITELLM_BASE_URL` | Override the LiteLLM proxy base URL |
@@ -940,13 +968,13 @@ The `.repowise/.env` file is gitignored automatically.
 | `REPOWISE_MODEL` | Override model |
 | `REPOWISE_DOC_MODEL` | Override the model used for `get_answer` synthesis specifically |
 | `REPOWISE_REASONING` | Override `reasoning` (see valid values above) |
-| `REPOWISE_ANSWER_TIMEOUT_S` | Seconds `get_answer` waits for synthesis before giving up. Defaults to a per-provider budget: 60s for the remote API providers, 120s for `ollama` and `litellm`, 180s for `codex_cli` and `opencode`. Raise it if your model is slower than its class suggests, lower it if you would rather an agent fail fast than block. Capped at 600s. Note your MCP client enforces its own tool timeout underneath this one, so setting a value above it produces a client-side error instead of repowise's diagnosable "synthesis exceeded its budget" response |
+| `REPOWISE_ANSWER_TIMEOUT_S` | Seconds `get_answer` waits for synthesis before giving up. Defaults to a per-provider budget: 60s for the remote API providers, 120s for `ollama`, `omlx`, and `litellm`, 180s for `codex_cli` and `opencode`. Raise it if your model is slower than its class suggests, lower it if you would rather an agent fail fast than block. Capped at 600s. Note your MCP client enforces its own tool timeout underneath this one, so setting a value above it produces a client-side error instead of repowise's diagnosable "synthesis exceeded its budget" response |
 
 ### Embeddings
 
 | Variable | Description |
 |----------|-------------|
-| `REPOWISE_EMBEDDER` | Embedder: `gemini`, `openai`, `ollama`, `openrouter`, `edenai`, or `mock` |
+| `REPOWISE_EMBEDDER` | Embedder: `gemini`, `openai`, `ollama`, `omlx`, `openrouter`, `edenai`, or `mock` |
 | `REPOWISE_EMBEDDING_MODEL` | Embedding model, applies to any embedder |
 | `REPOWISE_EMBEDDING_DIMS` | Embedding output dimensions (optional; inferred from the model otherwise) |
 | `REPOWISE_EMBEDDING_TIMEOUT` | Embed request timeout in seconds (default: `30` for `ollama`, `10` elsewhere). Raise it for a local endpoint — one request embeds a whole batch, and an expired batch is reported only as `N/N items failed to embed`. An unparseable value warns and keeps the default |

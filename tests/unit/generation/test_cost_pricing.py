@@ -51,6 +51,16 @@ def test_subscription_cli_models_are_zero_cost() -> None:
         assert get_model_pricing(model) == {"input": 0.0, "output": 0.0}
 
 
+def test_local_server_models_are_zero_cost() -> None:
+    """Local inference has no per-token price — the prefixed ids stay free.
+
+    The prefix must survive ``_lookup_cost``'s routing-prefix stripping the way
+    the agent-CLI passthroughs do, or the bare leaf would land on the fallback.
+    """
+    for model in ("omlx/Qwen3.5-9B-MTPLX-Optimized-Speed",):
+        assert get_model_pricing(model) == {"input": 0.0, "output": 0.0}
+
+
 def test_dated_opus_variant_prices_at_opus_tier_not_sonnet_fallback() -> None:
     # An Opus session id the exact table misses (dated / future point release)
     # must resolve to the Opus tier, not the Sonnet-priced fallback — otherwise

@@ -120,6 +120,14 @@ PROVIDER_CATALOG: list[dict[str, Any]] = [
         "requires_key": False,
     },
     {
+        "id": "omlx",
+        "name": "omlx (Local)",
+        "default_model": "Qwen3.5-9B-MTPLX-Optimized-Speed",
+        "models": ["Qwen3.5-9B-MTPLX-Optimized-Speed"],
+        "env_keys": [],
+        "requires_key": False,
+    },
+    {
         "id": "litellm",
         "name": "LiteLLM",
         "default_model": "groq/llama-3.1-70b-versatile",

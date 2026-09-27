@@ -64,6 +64,8 @@ PROVIDER_DEFAULTS: dict[str, RateLimitConfig] = {
     "gemini": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=4_000_000),
     # Ollama runs locally — effectively unlimited, but we cap to avoid OOM
     "ollama": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=10_000_000),
+    # omlx runs locally too — same shape as ollama
+    "omlx": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=10_000_000),
     "litellm": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=2_000_000),
     "deepseek": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=5_000_000),
     "kimi": RateLimitConfig(requests_per_minute=1_000, tokens_per_minute=5_000_000),

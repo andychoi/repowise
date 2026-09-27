@@ -216,10 +216,13 @@ def listed_model_options(
     reasoning_modes_for: Callable[[str], tuple[ReasoningMode, ...]],
     notes_for: Callable[[str, tuple[ReasoningMode, ...]], str],
     sort: bool = False,
+    model_filter: Callable[[str], bool] | None = None,
 ) -> tuple[ProviderModelOption, ...]:
     """Model options from ``GET /models`` for an endpoint that lists ids only.
 
     Falls back to the configured model when the listing is unavailable or empty.
+    *model_filter*, when given, drops ids that are not chat models — a local
+    server lists its embedding models in the same response.
     """
     fallback = fallback_model_option(
         fallback_model,
@@ -234,6 +237,8 @@ def listed_model_options(
         if not isinstance(raw, dict) or not isinstance(raw.get("id"), str):
             continue
         model_id = raw["id"]
+        if model_filter is not None and not model_filter(model_id):
+            continue
         reasoning_modes: tuple[ReasoningMode, ...] = ("auto", *reasoning_modes_for(model_id))
         options.append(
             ProviderModelOption(
@@ -271,6 +276,10 @@ class OpenAICompatibleProvider(BaseProvider):
     reports_stop_reason: ClassVar[bool] = True
     #: Fixed cost-tracker operation; ``None`` uses the tracker's current one.
     cost_operation: ClassVar[str | None] = None
+    #: Prefix stamped on the cost-tracker model so local runs price at $0
+    #: (the ``ollama/`` convention — see ``CostTracker.is_local_model``).
+    #: ``None`` records the bare model id, as the hosted providers do.
+    cost_model_prefix: ClassVar[str | None] = None
 
     def __init__(
         self,
@@ -426,8 +435,11 @@ class OpenAICompatibleProvider(BaseProvider):
             request_id=request_id,
         )
 
+        cost_model = (
+            f"{self.cost_model_prefix}{self._model}" if self.cost_model_prefix else self._model
+        )
         await record_generation_cost(
-            self._cost_tracker, model=self._model, result=result, operation=self.cost_operation
+            self._cost_tracker, model=cost_model, result=result, operation=self.cost_operation
         )
         return result
 

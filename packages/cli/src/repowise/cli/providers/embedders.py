@@ -26,6 +26,16 @@ def _embedder_kwargs(embedder_name: str, repo_path: Any = None) -> dict[str, Any
             kwargs["base_url"] = base_url
         if dimensions:
             kwargs["dimensions"] = int(dimensions)
+    elif embedder_name == "omlx":
+        model = os.environ.get("OMLX_EMBEDDING_MODEL") or model
+        base_url = os.environ.get("OMLX_BASE_URL")
+        dimensions = os.environ.get("OMLX_EMBEDDING_DIMS") or os.environ.get(
+            "REPOWISE_EMBEDDING_DIMS"
+        )
+        if base_url:
+            kwargs["base_url"] = base_url
+        if dimensions:
+            kwargs["dimensions"] = int(dimensions)
     elif embedder_name == "gemini":
         dimensions = os.environ.get("REPOWISE_EMBEDDING_DIMS")
         if dimensions:
@@ -53,6 +63,10 @@ def resolve_embedding_model(embedder_name: str) -> str | None:
     """
     if embedder_name == "ollama":
         return os.environ.get("OLLAMA_EMBEDDING_MODEL") or os.environ.get(
+            "REPOWISE_EMBEDDING_MODEL"
+        )
+    if embedder_name == "omlx":
+        return os.environ.get("OMLX_EMBEDDING_MODEL") or os.environ.get(
             "REPOWISE_EMBEDDING_MODEL"
         )
     return os.environ.get("REPOWISE_EMBEDDING_MODEL")
@@ -87,6 +101,8 @@ def resolve_embedder(embedder_flag: str | None, env: Mapping[str, str] | None = 
         return "openrouter"
     if _get("OLLAMA_EMBEDDING_MODEL"):
         return "ollama"
+    if _get("OMLX_EMBEDDING_MODEL"):
+        return "omlx"
     if _get("EDENAI_API_KEY"):
         return "edenai"
     return global_config_embedder() or "mock"
@@ -135,7 +151,7 @@ def template_run_embedder(embedder_name_resolved: str, embedder_was_requested: b
     Shared because ``init`` has to predict this answer before the pipeline, to
     build the run's vector store with the backend generation will actually use.
     """
-    hosted = embedder_name_resolved not in ("mock", "ollama")
+    hosted = embedder_name_resolved not in ("mock", "ollama", "omlx")
     return "mock" if hosted and not embedder_was_requested else embedder_name_resolved
 
 

@@ -12,6 +12,7 @@ Built-in providers:
     - kimi        → KimiProvider
     - edenai      → EdenAIProvider
     - ollama      → OllamaProvider
+    - omlx        → OmlxProvider
     - litellm     → LiteLLMProvider
     - codex_cli   → CodexCliProvider
     - claude_cli  → ClaudeCliProvider
@@ -52,6 +53,7 @@ _BUILTIN_PROVIDERS: dict[str, tuple[str, str]] = {
     "openrouter": ("repowise.core.providers.llm.openrouter", "OpenRouterProvider"),
     "gemini": ("repowise.core.providers.llm.gemini", "GeminiProvider"),
     "ollama": ("repowise.core.providers.llm.ollama", "OllamaProvider"),
+    "omlx": ("repowise.core.providers.llm.omlx", "OmlxProvider"),
     "litellm": ("repowise.core.providers.llm.litellm", "LiteLLMProvider"),
     "deepseek": ("repowise.core.providers.llm.deepseek", "DeepSeekProvider"),
     "kimi": ("repowise.core.providers.llm.kimi", "KimiProvider"),
@@ -91,6 +93,7 @@ PROVIDER_BASE_URL_ENVS: dict[str, tuple[str, ...]] = {
     "kimi": ("KIMI_BASE_URL",),
     "edenai": ("EDENAI_BASE_URL",),
     "ollama": ("OLLAMA_BASE_URL",),
+    "omlx": ("OMLX_BASE_URL",),
     "litellm": ("LITELLM_BASE_URL", "LITELLM_API_BASE"),
 }
 
@@ -99,7 +102,7 @@ PROVIDER_BASE_URL_ENVS: dict[str, tuple[str, ...]] = {
 # proxy the user secured elsewhere). Resolution must never reject one of these
 # for a "missing" key, and must never fall through to a different provider
 # because it could not find one.
-KEYLESS_PROVIDERS = frozenset({"codex_cli", "claude_cli", "opencode", "ollama", "litellm", "mock"})
+KEYLESS_PROVIDERS = frozenset({"codex_cli", "claude_cli", "opencode", "ollama", "omlx", "litellm", "mock"})
 
 # Providers that shell out to a CLI and therefore need to be told which repo
 # they are reasoning about: they pass it as the subprocess working directory.
@@ -125,6 +128,7 @@ PROVIDER_AUTODETECT_ORDER: tuple[str, ...] = (
     # and an unrelated EDENAI_API_KEY in the environment must not silently take
     # over from a provider the user was already resolving to.
     "edenai",
+    "omlx",
 )
 
 # An env var set to "" or whitespace means "not set". CI systems and agent
@@ -179,14 +183,14 @@ def _first_env(names: tuple[str, ...], getenv: EnvLookup) -> str | None:
 def provider_required_envs(name: str) -> tuple[str, ...]:
     """Env vars without which ``name`` cannot reach a model at all.
 
-    An API key for the remote-API providers; the endpoint for ollama, which
-    needs no key but does need somewhere to send the request. Empty for
+    An API key for the remote-API providers; the endpoint for ollama and omlx,
+    which need no key but do need somewhere to send the request. Empty for
     providers that are self-sufficient (the agent CLIs, mock).
     """
     if name in PROVIDER_API_KEY_ENVS:
         return PROVIDER_API_KEY_ENVS[name]
-    if name == "ollama":
-        return PROVIDER_BASE_URL_ENVS["ollama"]
+    if name in ("ollama", "omlx"):
+        return PROVIDER_BASE_URL_ENVS[name]
     return ()
 
 
@@ -334,6 +338,7 @@ def get_provider(
             "openai": "openai",
             "gemini": "google-genai",
             "ollama": "openai",  # ollama uses the openai package
+            "omlx": "openai",  # omlx uses the openai package
             "openrouter": "openai",  # openrouter uses the openai package
             "deepseek": "openai",  # deepseek uses the openai package
             "kimi": "openai",  # kimi uses the openai package
