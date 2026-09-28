@@ -86,6 +86,7 @@ class TraversalStats:
     skipped_oversized: int = 0
     skipped_binary: int = 0
     skipped_generated: int = 0
+    skipped_vendored: int = 0
     skipped_extra_ignore: int = 0
     skipped_extra_exclude: int = 0
     skipped_blocked_pattern: int = 0
@@ -195,6 +196,12 @@ _BLOCKED_DIRS: frozenset[str] = frozenset(
         "target",  # Rust / Maven
         ".gradle",
         "vendor",  # Go / PHP
+        # Third-party trees under their conventional names (Bower, JSPM, the
+        # Google/Chromium convention). Same reasoning as vendor/.
+        "bower_components",
+        "jspm_packages",
+        "third_party",
+        "third-party",
         "coverage",
         "htmlcov",
         ".eggs",
@@ -816,6 +823,16 @@ class FileTraverser:
             log.debug("Skipping generated file", path=rel_str)
             return None
 
+        # A library build checked into a web root (WebContent/js, static/js)
+        # sits outside every blocked directory, and only minified builds match
+        # *.min.js. Indexed, it was health-scored, offered as dead code, and a
+        # vendored bootstrap.js was named a Java application's entry point.
+        if language == "javascript" and is_vendored_library(abs_path):
+            with self._count_lock:
+                self.stats.skipped_vendored += 1
+            log.debug("Skipping vendored library", path=rel_str)
+            return None
+
         filename = abs_path.name
         return FileInfo(
             path=rel_str,
@@ -1087,6 +1104,34 @@ def _looks_minified(abs_path: Path) -> bool | None:
     return len(sample) / (sample.count(b"\n") + 1) > _MINIFIED_MEAN_LINE_BYTES
 
 
+#: A version token such as ``v3.3.2``, ``Version 2.70.0`` or ``2.1.3``.
+_VENDOR_VERSION_RE = re.compile(r"\bv?(?:ersion\s*)?\d+\.\d+(?:\.\d+)?\b", re.IGNORECASE)
+#: Provenance a distributed build carries next to its version.
+_VENDOR_PROVENANCE_RE = re.compile(r"licen[cs]e|copyright|\(c\)|https?://", re.IGNORECASE)
+
+
+def is_vendored_library(abs_path: Path) -> bool:
+    """True for a third-party library build checked into the tree.
+
+    The signal is the preserved-comment banner distributed builds ship with:
+    the file opens with ``/*!`` and that banner names a version plus a licence,
+    copyright or URL (Bootstrap, jQuery and its plugins, js-cookie all do). A
+    project's own ``/*!`` note without a version, or an ordinary ``/*`` header
+    on a purchased template, is left to the index. Only the banner is read.
+    """
+    try:
+        with open(abs_path, encoding="utf-8", errors="ignore") as f:
+            header = f.read(1024)
+    except OSError:
+        return False
+    text = header.lstrip("\ufeff \t\r\n")
+    if not text.startswith("/*!"):
+        return False
+    end = text.find("*/")
+    banner = text[: end if end != -1 else len(text)]
+    return bool(_VENDOR_VERSION_RE.search(banner) and _VENDOR_PROVENANCE_RE.search(banner))
+
+
 def _is_generated(abs_path: Path) -> bool:
     """Return True if the file appears to be auto-generated.
 
@@ -1295,9 +1340,7 @@ def _scan_package_dir(
     counts: dict[str, int] = {}
     entry_points: list[str] = []
     try:
-        for dirpath, dirnames, filenames in walk_repo(
-            directory, prune_nested_git=prune_nested_git
-        ):
+        for dirpath, dirnames, filenames in walk_repo(directory, prune_nested_git=prune_nested_git):
             # Prune in place so the walk never descends, matching
             # scan_package_roots. Candidates are repo-relative because
             # dir_chain_skipped tests each level against the repo root.

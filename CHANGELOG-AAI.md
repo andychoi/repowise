@@ -58,3 +58,23 @@ matching tag at https://github.com/andychoi/repowise.
   - With no history, the history averages are null too.
   - The persisted snapshot and trend alerts are unchanged.
 - **Detect:** `health --format json` → `kpis.hotspot_health_basis`.
+
+### E5 (and E4): vendored JavaScript libraries are not indexed as application code
+
+- **Before:** library builds checked into a web root (`WebContent/js/libs/…`,
+  `iam/js/bootstrap.js`) sat outside every blocked directory, and only minified
+  builds matched `*.min.js`. They were health-scored and offered as dead code.
+  Because `bootstrap` is a generic entry stem, a vendored Twitter Bootstrap was
+  named a Java EE application's execution entry point (E4).
+- **Now:**
+  - A JavaScript file whose opening `/*!` banner carries a version and a licence,
+    copyright or URL is skipped as a vendored library and counted in
+    `TraversalStats.skipped_vendored`.
+  - `bower_components`, `jspm_packages`, `third_party` and `third-party` join
+    the blocked directories.
+  - Hand-written code, a project's own unversioned `/*!` note, and ordinary `/*`
+    template headers stay indexed.
+  - E4 needs no separate entry-point rule: a skipped file never reaches entry
+    candidacy. A hand-written `bootstrap.js` is still a legitimate entry.
+- **Detect:** `skipped_vendored` in traversal stats; vendored paths are absent
+  from `health` and the overview entry points.
