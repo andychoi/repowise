@@ -190,3 +190,40 @@ def test_an_unresolvable_class_and_vendored_descriptors_change_nothing(tmp_path:
 
     assert not node.get("is_entry_point")
     assert "framework_role" not in node
+
+
+# ---------------------------------------------------------------------------
+# E11: JSPs name the Java classes they use
+# ---------------------------------------------------------------------------
+
+
+def test_classes_imported_or_used_by_a_jsp_are_reachable(tmp_path: Path) -> None:
+    util = _java(tmp_path, "src/com/acme/web/PassUtil.java", "com.acme.web.PassUtil")
+    bean = _java(tmp_path, "src/com/acme/web/LogonBean.java", "com.acme.web.LogonBean")
+    other = _java(tmp_path, "src/com/acme/web/Unused.java", "com.acme.web.Unused")
+    _write(
+        tmp_path,
+        "WebContent/logonPage.jsp",
+        '<%@ page language="java" import="java.util.*, com.acme.web.PassUtil" %>\n'
+        '<jsp:useBean id="logon" class="com.acme.web.LogonBean" scope="request"/>\n'
+        "<html><%= PassUtil.mask(logon.getUser()) %></html>\n",
+    )
+
+    graph = _run(tmp_path)
+
+    assert graph.nodes[util]["framework_role"] == "jsp_referenced"
+    assert graph.nodes[bean]["is_entry_point"] is True
+    assert "framework_role" not in graph.nodes[other]
+
+
+def test_jsp_and_wsdl_are_reference_bearing_for_dead_code(tmp_path: Path) -> None:
+    from repowise.core.ingestion.traverser import FileTraverser
+
+    _write(tmp_path, "WebContent/page.jsp", "<%= com.acme.X.run() %>\n")
+    _write(tmp_path, "wsdl/Account.wsdl", "<definitions name='Account'/>\n")
+
+    traverser = FileTraverser(tmp_path)
+    list(traverser.traverse())
+
+    recorded = {s.path for s in traverser.stats.unknown_language_files}
+    assert {"WebContent/page.jsp", "wsdl/Account.wsdl"} <= recorded

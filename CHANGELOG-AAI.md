@@ -174,3 +174,23 @@ matching tag at https://github.com/andychoi/repowise.
   parsing from the plan was not needed.
 - **Measured on the legacy Java EE / SAP pilot:** 0 → 25 packages (19 Java,
   5 EAR/UI wrappers, 1 JavaScript), `is_monorepo: true`.
+
+### E11: JSPs and WSDLs count as references to the code they name
+
+- **Before:** JSP and WSDL files were skipped as unknown languages and fed
+  nothing to the index. A class used only from a JSP (`<%@ page import %>`,
+  `<jsp:useBean class>`) had no importer, so it read as dead code.
+- **Now:**
+  - The E9 handler also scans `.jsp`, `.jspf`, `.tag` and `.tagx`. Concrete
+    classes a JSP imports or instantiates are stamped reachable
+    (`framework_role: jsp_referenced`); wildcard imports are skipped.
+  - `.jsp`, `.jspf`, `.tag` and `.wsdl` join the reference-bearing extensions,
+    so a symbol named in them is not called deletion-ready.
+- **Not done, by design:** JSP and WSDL are not graph nodes, so no JSP→Java or
+  WSDL→bean edges are drawn. SOAP implementation beans were already entry
+  points through `@Stateless` (Jakarta handler).
+- **Measured on the legacy Java EE / SAP pilot:** no change from E11 alone;
+  its JSPs import only JDK and SAP platform classes, none in the repository.
+  Together, E5 + E9 + E11 took dead-code findings from 126 to 60 on that estate.
+- **Limit:** the reference-bearing path list is capped at 500 files upstream; a
+  very large JSP estate would exceed it.

@@ -1,4 +1,4 @@
-"""Deployment-descriptor entry points for Java EE, JAAS and SAP NetWeaver.
+"""Deployment-descriptor entry points for Java EE, JAAS, SAP NetWeaver and JSP.
 
 A Java EE container, a JAAS login configuration or the SAP portal runtime
 enters application code through classes named in XML (or, for JAAS, a small
@@ -53,6 +53,12 @@ _PORTAL_CLASS_RE = re.compile(
 _ANDROID_NAME_RE = re.compile(r'android:name="([\w.$]+)"')
 _ANDROID_PACKAGE_RE = re.compile(r'<manifest[^>]*\bpackage="([\w.]+)"')
 
+# JSP directives and actions that name a concrete class. Wildcard imports
+# (``java.util.*``) name a package, not a class, and are skipped.
+_JSP_PAGE_IMPORT_RE = re.compile(r'<%@\s*page\b[^%]*?\bimport\s*=\s*"([^"]+)"', re.DOTALL)
+_JSP_USEBEAN_RE = re.compile(rf'<jsp:useBean\b[^>]*?\b(?:class|type)\s*=\s*"{_FQN}"', re.DOTALL)
+_JSP_EXTENSIONS = (".jsp", ".jspf", ".tag", ".tagx")
+
 _JAAS_CONFIG_NAMES = frozenset({"jaas.config", "jaas.conf", "login.config", "login.conf"})
 _DESCRIPTOR_NAMES = frozenset(
     {
@@ -73,7 +79,7 @@ def find_descriptors(repo_path: Path | None) -> list[tuple[str, Path]]:
     found: list[tuple[str, Path]] = []
     for root, _dirs, files in walk_repo(repo_path, prune_dirs=_PRUNE):
         for name in files:
-            if name.lower() in _DESCRIPTOR_NAMES:
+            if name.lower() in _DESCRIPTOR_NAMES or name.lower().endswith(_JSP_EXTENSIONS):
                 abs_path = Path(root) / name
                 found.append((abs_path.relative_to(repo_path).as_posix(), abs_path))
                 if len(found) >= _MAX_DESCRIPTORS:
@@ -108,6 +114,16 @@ def declared_classes(name: str, text: str) -> Iterator[tuple[str, str]]:
     elif lower == "portalapp.xml":
         for first, second in _PORTAL_CLASS_RE.findall(text):
             yield first or second, "sap_portal_component"
+    elif lower.endswith(_JSP_EXTENSIONS):
+        # A JSP compiles to a servlet the container enters, so a class it
+        # imports or instantiates is reachable at runtime without an importer.
+        for imports in _JSP_PAGE_IMPORT_RE.findall(text):
+            for item in imports.split(","):
+                fqn = item.strip()
+                if "." in fqn and not fqn.endswith("*"):
+                    yield fqn, "jsp_referenced"
+        for fqn in _JSP_USEBEAN_RE.findall(text):
+            yield fqn, "jsp_referenced"
     elif lower == "androidmanifest.xml":
         package = _ANDROID_PACKAGE_RE.search(text)
         for raw in _ANDROID_NAME_RE.findall(text):

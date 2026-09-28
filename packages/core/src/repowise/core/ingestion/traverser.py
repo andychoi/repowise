@@ -161,6 +161,12 @@ _MAX_UNKNOWN_LANGUAGE_PATHS = 500
 _REFERENCE_BEARING_EXTENSIONS: frozenset[str] = frozenset(
     {
         ".api",  # also matches Kotlin's .klib.api
+        # Java EE views and SOAP contracts name classes, beans and types that
+        # no parsed file imports (JSP scriptlets, useBean, WSDL port types).
+        ".jsp",
+        ".jspf",
+        ".tag",
+        ".wsdl",
         ".properties",
         ".rst",
         ".topic",
