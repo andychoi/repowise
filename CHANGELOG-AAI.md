@@ -162,3 +162,15 @@ matching tag at https://github.com/andychoi/repowise.
   at" sentence still comes from filename conventions, so on this estate it is
   now omitted rather than wrong. Feeding framework-declared entries into the
   overview is a separate change.
+
+### E10: an Eclipse workspace is reported as packages, one per `.project`
+
+- **Before:** the only JVM package manifests were `pom.xml` and `build.gradle*`,
+  so a legacy Eclipse workspace (no Maven or Gradle anywhere) read as one
+  package-less tree, and module rollups fell back to top-level directories.
+- **Now:** `.project` is a Java package manifest. The package name is the
+  directory, which for Eclipse is the project name. Cross-project imports
+  already resolved through `package` declarations, so `.classpath` source-root
+  parsing from the plan was not needed.
+- **Measured on the legacy Java EE / SAP pilot:** 0 → 25 packages (19 Java,
+  5 EAR/UI wrappers, 1 JavaScript), `is_monorepo: true`.

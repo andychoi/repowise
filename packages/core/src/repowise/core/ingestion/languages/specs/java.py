@@ -80,7 +80,10 @@ SPEC = LanguageSpec(
         {"class_declaration", "interface_declaration", "enum_declaration"}
     ),
     entry_point_patterns=("Main.java", "Application.java"),
-    manifest_files=("pom.xml", "build.gradle", "build.gradle.kts"),
+    # ``.project`` is Eclipse's project descriptor: in a legacy Java EE / SAP
+    # NetWeaver workspace it is the only module boundary there is (no Maven or
+    # Gradle file anywhere), and one directory per project is the package.
+    manifest_files=("pom.xml", "build.gradle", "build.gradle.kts", ".project"),
     blocked_dirs=(".gradle",),
     builtin_calls=frozenset(
         {
