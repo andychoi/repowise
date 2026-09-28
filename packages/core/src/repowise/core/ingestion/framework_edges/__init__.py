@@ -31,6 +31,7 @@ from . import (
     gtest,
     hono,
     jakarta,
+    javaee_descriptors,
     laravel,
     micronaut,
     next_app,
@@ -63,6 +64,9 @@ _HANDLERS: list[FrameworkHandler] = [
     *laravel.HANDLERS,
     *spring.HANDLERS,
     *jakarta.HANDLERS,
+    # Descriptor-declared entry points (web.xml, ejb-jar.xml, JAAS, SAP portal,
+    # and Android manifests found on disk rather than in parsed_files).
+    *javaee_descriptors.HANDLERS,
     *quarkus.HANDLERS,
     *micronaut.HANDLERS,
     *android_manifest.HANDLERS,

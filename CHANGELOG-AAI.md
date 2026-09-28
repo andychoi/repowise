@@ -135,3 +135,30 @@ matching tag at https://github.com/andychoi/repowise.
   slightly (on `ams`: hotspot 5.24 live vs 4.74 stored). That is upstream
   behavior; pick one source per comparison.
 - **Detect:** `health --format json` → `source`, `output.truncated`.
+
+### E9: deployment-descriptor entry points (Java EE, JAAS, SAP NetWeaver, Android)
+
+- **Before:** classes a container enters through XML had no in-source caller:
+  - servlets, filters and listeners in `web.xml`;
+  - EJBs in `ejb-jar.xml`;
+  - JAAS login modules;
+  - SAP portal components in `portalapp.xml`.
+
+  They were never entry points and read as dead code. Spike S1 found why no
+  handler could see them: the traverser skips `.xml` as an unknown language.
+  That includes `AndroidManifest.xml`, so the existing Android handler never
+  fired on a real repository; its tests hand it a synthetic parsed shell.
+- **Now:** `framework_edges/javaee_descriptors.py` finds descriptors on disk,
+  including SAP's source `dist/PORTAL-INF/`, which the traverser prunes. It
+  resolves each named class through the JVM workspace index and stamps
+  `is_entry_point` plus `framework_role`: `servlet`, `servlet_filter`,
+  `servlet_listener`, `ejb`, `jaas_login_module`, `sap_portal_component` or
+  `android_component`. Android manifests now work from disk. No edges are
+  invented from descriptor files, because they are not graph nodes.
+- **Measured on the legacy Java EE / SAP pilot:** entry points 34 → 77. The JAAS
+  login module and 19 SAP portal components are now entry points; the
+  vendored `bootstrap.js` is gone (E5).
+- **Known limitation (E9b, follow-up):** the repo overview's "Execution starts
+  at" sentence still comes from filename conventions, so on this estate it is
+  now omitted rather than wrong. Feeding framework-declared entries into the
+  overview is a separate change.

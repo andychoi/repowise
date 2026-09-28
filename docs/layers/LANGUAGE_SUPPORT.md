@@ -217,7 +217,7 @@ their relationships:
 |----------|-----------|
 | Python | Django, FastAPI, Flask, Celery, pytest fixtures |
 | Ruby | Rails (routes → controller actions, Zeitwerk), RSpec mirror edges |
-| Java / Kotlin | Spring (stereotypes, `@RequestMapping`, Spring Data, `@Bean`), Jakarta / JPA, Quarkus, Micronaut, Android manifest |
+| Java / Kotlin | Spring (stereotypes, `@RequestMapping`, Spring Data, `@Bean`), Jakarta / JPA, Quarkus, Micronaut, Android manifest, deployment descriptors (`web.xml` servlets/filters/listeners, `ejb-jar.xml`, JAAS `LoginModuleConfiguration.xml` and `jaas.config`, SAP NetWeaver `portalapp.xml` including `dist/PORTAL-INF/`): declared classes are marked entry points with a `framework_role`, found on disk because `.xml` is not a parsed language |
 | C# | ASP.NET (attribute + minimal API), EF Core, gRPC-dotnet, host-builder extensions, CommunityToolkit MVVM |
 | Go | net/http, gin, echo, chi, gRPC server registration |
 | Rust | Axum, Actix route → handler |
