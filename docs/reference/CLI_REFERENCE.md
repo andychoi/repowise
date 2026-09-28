@@ -795,6 +795,7 @@ to the model's baseline commit, not this repo.
 | `--baseline` | Recent commits to sample for the repo-relative percentile (default 200; `0` shows only the absolute per-commit model-score band) |
 | `--target` / `-t` | Score what history says about these **files** instead of a change. Repeatable; switches the command to the `get_risk` tool |
 | `--changed-file` | With `--target`: PR mode. Leads with a directive naming what may break, which co-changes and tests are missing, and what to run |
+| `--paginate` / `--no-paginate` | With `--target`: re-request any card the response budget shed so every target gets an answer (default; the JSON gains `pages`). `--no-paginate` returns one budgeted page and reports the shortfall in `truncated` / `targets_total` / `targets_omitted`. PR mode is never paged, because its directive is computed over the whole target set |
 | `--format` | Output format: `table` (default) or `json` |
 | `--full` | With `--target`: emit the complete tool payload as JSON (implies `--format json`) |
 

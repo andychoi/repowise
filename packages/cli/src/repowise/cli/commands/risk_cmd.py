@@ -65,6 +65,17 @@ _PRIORITY_LEAD = {
 _DROPPED_TARGET_KEYS = ("_base_dep_count", "impact_surface")
 
 
+#: Top-level fields the response budget writes when it sheds target cards.
+_TRUNCATION_KEYS = (
+    "truncated",
+    "targets_total",
+    "targets_emitted",
+    "targets_omitted",
+    "targets_truncated",
+    "targets_reduced_reason",
+)
+
+
 def _project_target(card: dict) -> dict:
     """One ``get_risk`` target card, minus the blocks in ``_DROPPED_TARGET_KEYS``."""
     return {k: v for k, v in card.items() if k not in _DROPPED_TARGET_KEYS}
@@ -90,31 +101,36 @@ def project_risk(payload: dict) -> dict:
     out["targets"] = {
         name: _project_target(card) for name, card in (payload.get("targets") or {}).items()
     }
-    for key in ("risk_scales", "pr_blast_radius", "global_hotspots", "omission_marker"):
+    for key in ("risk_scales", "pr_blast_radius", "global_hotspots", "omission_marker", "pages"):
         if payload.get(key):
             out[key] = payload[key]
+    # The budget's own account of what it shed. Dropping these turned a
+    # 30-target request into a 7-target map that said nothing was missing.
+    if payload.get("truncated"):
+        for key in _TRUNCATION_KEYS:
+            if key in payload:
+                out[key] = payload[key]
+    omitted = (payload.get("_meta") or {}).get("omitted")
+    if omitted:
+        out["omitted"] = omitted
     note = _ta.index_note(payload)
     if note:
         out["index"] = note
     return out
 
 
-def _target_risk(
-    repo_path: str,
-    targets: tuple[str, ...],
-    changed_files: tuple[str, ...],
-    fmt: str,
-    full: bool,
-) -> None:
-    """``--target``: what history says about touching these files."""
-    fmt = _ta.resolve_format_for(fmt, full)
-    repo = _ta.resolve_indexed_repo(
+def _resolve_target_repo(repo_path: str, fmt: str):
+    return _ta.resolve_indexed_repo(
         path=repo_path,
         repo_alias=None,
         no_workspace=False,
         fmt=fmt,
         command="risk",
     )
+
+
+def _fetch_target_payload(repo, targets: list[str], changed_files: tuple[str, ...]) -> dict:
+    """One ``get_risk`` call for *targets*."""
 
     def _factory():
         from repowise.server.mcp_server.tool_risk.get_risk import get_risk
@@ -126,7 +142,68 @@ def _target_risk(
             include=["churn"],
         )
 
-    payload = _ta.run(repo, _factory, "get_risk")
+    return _ta.run(repo, _factory, "get_risk")
+
+
+def _paged_target_payload(repo, targets: tuple[str, ...], changed_files: tuple[str, ...]) -> dict:
+    """``get_risk`` for every target, re-asking for any card the budget shed.
+
+    The response budget protects an agent's context window; a terminal or a
+    script has none to protect, and a shorter map with no error is the worst
+    answer it can get. The first page keeps its directive, hotspots and index
+    note; later pages contribute only the missing cards. PR mode is not paged:
+    its directive is computed over the whole target set, so splitting the set
+    would change the answer rather than complete it. A page that returns no
+    new card stops the loop and leaves the shortfall reported.
+    """
+    payload = _fetch_target_payload(repo, list(targets), changed_files)
+    if changed_files or not payload.get("truncated"):
+        return payload
+    cards = dict(payload.get("targets") or {})
+    pages = 1
+    remaining = [t for t in targets if t not in cards]
+    while remaining:
+        page = _fetch_target_payload(repo, remaining, changed_files)
+        pages += 1
+        new = {k: v for k, v in (page.get("targets") or {}).items() if k not in cards}
+        if not new:
+            break
+        cards.update(new)
+        remaining = [t for t in remaining if t not in cards]
+    payload["targets"] = cards
+    payload["pages"] = pages
+    total = int(payload.get("targets_total") or len(targets))
+    for key in _TRUNCATION_KEYS:
+        payload.pop(key, None)
+    if remaining:
+        payload.update(
+            truncated=True,
+            targets_total=total,
+            targets_emitted=len(cards),
+            targets_omitted=total - len(cards),
+            targets_truncated=True,
+            targets_reduced_reason="response_budget",
+        )
+    return payload
+
+
+def _target_risk(
+    repo_path: str,
+    targets: tuple[str, ...],
+    changed_files: tuple[str, ...],
+    fmt: str,
+    full: bool,
+    paginate: bool = True,
+) -> None:
+    """``--target``: what history says about touching these files."""
+    fmt = _ta.resolve_format_for(fmt, full)
+    repo = _resolve_target_repo(repo_path, fmt)
+
+    # --full is the tool's own payload, so it is never paged or merged.
+    if paginate and not full:
+        payload = _paged_target_payload(repo, targets, changed_files)
+    else:
+        payload = _fetch_target_payload(repo, list(targets), changed_files)
 
     if full:
         _ta.emit_full(payload)
@@ -505,6 +582,14 @@ def _ordinal(n: int) -> str:
     help="With --target: PR mode. The response leads with a directive naming "
     "structural review candidates, missing co-changes/tests, and what to run.",
 )
+@click.option(
+    "--paginate/--no-paginate",
+    "paginate",
+    default=True,
+    help="With --target: re-request any card the response budget shed, so every "
+    "target gets an answer (default). --no-paginate returns one budgeted page and "
+    "reports the shortfall in truncated / targets_omitted.",
+)
 @format_option()
 @full_option()
 def risk_command(
@@ -515,6 +600,7 @@ def risk_command(
     exclude: tuple[str, ...],
     targets: tuple[str, ...],
     changed_files: tuple[str, ...],
+    paginate: bool,
     fmt: str,
     full: bool,
 ) -> None:
@@ -526,7 +612,7 @@ def risk_command(
     history says about the named files, the same as the get_risk MCP tool.
     """
     if targets:
-        _target_risk(repo_path, targets, changed_files, fmt, full)
+        _target_risk(repo_path, targets, changed_files, fmt, full, paginate)
         return
     if changed_files:
         raise click.UsageError("--changed-file needs at least one --target.")

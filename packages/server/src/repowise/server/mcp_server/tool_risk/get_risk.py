@@ -75,6 +75,30 @@ _BLAST_INCLUDES: dict[str, tuple[str, ...]] = {"graph": ("direct_risks",)}
 _INCLUDE_BLOCKS = frozenset(_TARGET_CARD_INCLUDES) | frozenset(_BLAST_INCLUDES) | {"scales"}
 
 
+def order_cards_for_shedding(results: list[dict]) -> list[dict]:
+    """Target cards ordered so the response budget sheds the least risky first.
+
+    The ``get_risk`` contract sheds ``targets[]`` from the tail when a response
+    overflows. In request order that evicted whichever files the caller happened
+    to name last, and a hotspot named late was the first answer lost. Riskiest
+    first puts the files a caller most needs at the front, where shedding never
+    reaches them.
+
+    Unresolved cards lead: each is a few bytes, and it is the only thing that
+    tells a caller a path was not found. Resolved cards follow by counted bug
+    fixes, then hotspot score, both descending. ``sorted`` is stable, so equal
+    risk keeps request order.
+    """
+
+    def _key(card: dict) -> tuple[int, int, float]:
+        if card.get("resolved") is False:
+            return (0, 0, 0.0)
+        fixes = int((card.get("defect_profile") or {}).get("fix_count") or 0)
+        return (1, -fixes, -float(card.get("hotspot_score") or 0.0))
+
+    return sorted(results, key=_key)
+
+
 def _drop_opt_in_blocks(response: dict, include: set[str]) -> None:
     """Strip the opt-in fields no ``include`` key asked for."""
     cards = list(response.get("targets", {}).values())
@@ -252,9 +276,7 @@ async def get_risk(
                     GitMetadata.churn_percentile.desc(),
                 )
             )
-            all_hotspots = filter_rows_by_attr(
-                list(res.scalars().all()), "file_path", exclude_spec
-            )
+            all_hotspots = filter_rows_by_attr(list(res.scalars().all()), "file_path", exclude_spec)
             for h in all_hotspots:
                 if h.file_path in target_set:
                     continue
@@ -282,9 +304,7 @@ async def get_risk(
     scored = [r for r in results if r.get("resolved") is not False]
 
     # Cross-repo blast radius enrichment (Phase 3 + 4)
-    await _enrich_cross_repo(
-        scored, ctx.alias, collector, include_graph="graph" in include_set
-    )
+    await _enrich_cross_repo(scored, ctx.alias, collector, include_graph="graph" in include_set)
 
     # ---- Code-health enrichment --------------------------------------------
     # Attach per-file health_score + top_biomarkers (up to 3) drawn from the
@@ -298,7 +318,7 @@ async def get_risk(
     await asyncio.to_thread(_enrich_episodes, scored, ctx.path)
 
     response: dict = {
-        "targets": {r["target"]: r for r in results},
+        "targets": {r["target"]: r for r in order_cards_for_shedding(results)},
         **({"risk_scales": file_risk_scales()} if "scales" in include_set else {}),
     }
 
