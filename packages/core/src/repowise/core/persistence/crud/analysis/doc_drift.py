@@ -274,7 +274,9 @@ async def get_doc_drift_references(
     markdown link with a fragment creates, which would otherwise be ordered by
     whatever the backend picks.
     """
-    stmt = select(DocDriftReference).where(DocDriftReference.repository_id == repository_id)
+    stmt = select(DocDriftReference).where(
+        DocDriftReference.repository_id == repository_id
+    )
     if target_paths is not None:
         paths = sorted(set(target_paths))
         if not paths:
@@ -330,7 +332,9 @@ async def doc_drift_references_stored(session: AsyncSession, repository_id: str)
     nothing reads as unavailable rather than empty: an understatement, never a
     false clean, which is the direction this must fail in.
     """
-    stmt = select(DocDriftReference.id).where(DocDriftReference.repository_id == repository_id)
+    stmt = select(DocDriftReference.id).where(
+        DocDriftReference.repository_id == repository_id
+    )
     return (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None
 
 
@@ -346,7 +350,9 @@ async def doc_drift_findings_stored(session: AsyncSession, repository_id: str) -
     Asked only when a narrowed query came back empty, so the common case pays
     nothing.
     """
-    stmt = select(DocDriftFinding.id).where(DocDriftFinding.repository_id == repository_id)
+    stmt = select(DocDriftFinding.id).where(
+        DocDriftFinding.repository_id == repository_id
+    )
     return (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None
 
 

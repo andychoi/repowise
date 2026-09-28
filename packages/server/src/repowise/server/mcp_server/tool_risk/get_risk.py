@@ -276,7 +276,9 @@ async def get_risk(
                     GitMetadata.churn_percentile.desc(),
                 )
             )
-            all_hotspots = filter_rows_by_attr(list(res.scalars().all()), "file_path", exclude_spec)
+            all_hotspots = filter_rows_by_attr(
+                list(res.scalars().all()), "file_path", exclude_spec
+            )
             for h in all_hotspots:
                 if h.file_path in target_set:
                     continue
@@ -304,7 +306,9 @@ async def get_risk(
     scored = [r for r in results if r.get("resolved") is not False]
 
     # Cross-repo blast radius enrichment (Phase 3 + 4)
-    await _enrich_cross_repo(scored, ctx.alias, collector, include_graph="graph" in include_set)
+    await _enrich_cross_repo(
+        scored, ctx.alias, collector, include_graph="graph" in include_set
+    )
 
     # ---- Code-health enrichment --------------------------------------------
     # Attach per-file health_score + top_biomarkers (up to 3) drawn from the

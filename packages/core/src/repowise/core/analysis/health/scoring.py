@@ -938,6 +938,8 @@ def compute_kpis(
         "performance_average": round(perf_avg, 2) if perf_avg is not None else None,
         "performance_hotspot": round(perf_hotspot, 2) if perf_hotspot is not None else None,
         **{k: round(v, 2) if v is not None else None for k, v in splits.items()},
-        "production_average": (round(nloc_weighted_score(production), 2) if production else None),
+        "production_average": (
+            round(nloc_weighted_score(production), 2) if production else None
+        ),
         "production_file_count": len(production),
     }

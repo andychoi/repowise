@@ -1340,7 +1340,9 @@ def _scan_package_dir(
     counts: dict[str, int] = {}
     entry_points: list[str] = []
     try:
-        for dirpath, dirnames, filenames in walk_repo(directory, prune_nested_git=prune_nested_git):
+        for dirpath, dirnames, filenames in walk_repo(
+            directory, prune_nested_git=prune_nested_git
+        ):
             # Prune in place so the walk never descends, matching
             # scan_package_roots. Candidates are repo-relative because
             # dir_chain_skipped tests each level against the repo root.
