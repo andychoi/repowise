@@ -17,41 +17,23 @@ would mislead every consumer that reads node attributes.
 
 from __future__ import annotations
 
-import os
 import re
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from ...fs_walk import PRUNED_DIRS, walk_repo
 from ..resolvers import ResolverContext
 from .base import DetectionContext, FrameworkHandler
 
 if TYPE_CHECKING:
     import networkx as nx
 
-#: Directories never holding a hand-written descriptor. ``dist`` is absent on
-#: purpose: SAP portal projects keep source descriptors in ``dist/PORTAL-INF``.
-_PRUNE = frozenset(
-    {
-        ".git",
-        ".hg",
-        ".svn",
-        ".repowise",
-        "node_modules",
-        "bower_components",
-        ".venv",
-        "venv",
-        "__pycache__",
-        ".gradle",
-        "target",
-        "build",
-        "bin",
-        ".idea",
-        ".vscode",
-        "coverage",
-        ".cache",
-    }
-)
+#: The shared walker's prune set, plus Eclipse's ``bin/`` output folder (it
+#: holds compiled copies, never the source descriptor). ``dist`` is *not*
+#: pruned by the default set, which matters: SAP portal projects keep their
+#: source ``portalapp.xml`` under ``dist/PORTAL-INF``.
+_PRUNE = PRUNED_DIRS | frozenset({"bin", "bower_components", ".repowise"})
 _MAX_DESCRIPTOR_BYTES = 1_000_000
 _MAX_DESCRIPTORS = 5_000
 
@@ -89,8 +71,7 @@ def find_descriptors(repo_path: Path | None) -> list[tuple[str, Path]]:
     if repo_path is None or not repo_path.is_dir():
         return []
     found: list[tuple[str, Path]] = []
-    for root, dirs, files in os.walk(repo_path):
-        dirs[:] = [d for d in dirs if d not in _PRUNE]
+    for root, _dirs, files in walk_repo(repo_path, prune_dirs=_PRUNE):
         for name in files:
             if name.lower() in _DESCRIPTOR_NAMES:
                 abs_path = Path(root) / name
