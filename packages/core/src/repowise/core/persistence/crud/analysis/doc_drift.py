@@ -274,9 +274,7 @@ async def get_doc_drift_references(
     markdown link with a fragment creates, which would otherwise be ordered by
     whatever the backend picks.
     """
-    stmt = select(DocDriftReference).where(
-        DocDriftReference.repository_id == repository_id
-    )
+    stmt = select(DocDriftReference).where(DocDriftReference.repository_id == repository_id)
     if target_paths is not None:
         paths = sorted(set(target_paths))
         if not paths:
@@ -303,6 +301,22 @@ async def get_doc_drift_references(
     return list((await session.execute(stmt)).scalars().all())
 
 
+async def get_doc_drift_document_paths(session: AsyncSession, repository_id: str) -> set[str]:
+    """Every document with at least one resolved code reference stored.
+
+    With the documents that carry findings, this is the denominator of the
+    drift pass: the documents that name code, which are the only ones that can
+    drift. ``repowise doc-drift`` reports it so "no findings" states how many
+    documents were actually checked instead of reading as full coverage.
+    """
+    stmt = (
+        select(DocDriftReference.document_path)
+        .where(DocDriftReference.repository_id == repository_id)
+        .distinct()
+    )
+    return set((await session.execute(stmt)).scalars().all())
+
+
 async def doc_drift_references_stored(session: AsyncSession, repository_id: str) -> bool:
     """Whether this repository has any stored reference at all.
 
@@ -316,9 +330,7 @@ async def doc_drift_references_stored(session: AsyncSession, repository_id: str)
     nothing reads as unavailable rather than empty: an understatement, never a
     false clean, which is the direction this must fail in.
     """
-    stmt = select(DocDriftReference.id).where(
-        DocDriftReference.repository_id == repository_id
-    )
+    stmt = select(DocDriftReference.id).where(DocDriftReference.repository_id == repository_id)
     return (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None
 
 
@@ -334,9 +346,7 @@ async def doc_drift_findings_stored(session: AsyncSession, repository_id: str) -
     Asked only when a narrowed query came back empty, so the common case pays
     nothing.
     """
-    stmt = select(DocDriftFinding.id).where(
-        DocDriftFinding.repository_id == repository_id
-    )
+    stmt = select(DocDriftFinding.id).where(DocDriftFinding.repository_id == repository_id)
     return (await session.execute(stmt.limit(1))).scalar_one_or_none() is not None
 
 

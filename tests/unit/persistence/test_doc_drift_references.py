@@ -19,6 +19,7 @@ from repowise.core.analysis.doc_drift.models import (
 )
 from repowise.core.persistence.crud import (
     doc_drift_references_stored,
+    get_doc_drift_document_paths,
     get_doc_drift_references,
     replace_doc_drift_guarded,
     replace_doc_drift_references,
@@ -68,7 +69,9 @@ async def test_rerunning_the_pass_changes_no_rows(async_session):
     refs = [_ref(), _ref(doc_path="docs/b.md", line=4)]
     await replace_doc_drift_references(async_session, repo.id, refs)
     await async_session.commit()
-    first = {(r.document_path, r.target_path, r.line_number) for r in await _rows(async_session, repo.id)}
+    first = {
+        (r.document_path, r.target_path, r.line_number) for r in await _rows(async_session, repo.id)
+    }
 
     await replace_doc_drift_references(async_session, repo.id, refs)
     await async_session.commit()
@@ -114,9 +117,7 @@ async def test_scoped_write_keeps_rows_for_documents_it_did_not_read(async_sessi
     await async_session.commit()
 
     # A run that only re-read docs/a.md, and found it now names nothing.
-    await replace_doc_drift_references(
-        async_session, repo.id, [], scope=frozenset({"docs/a.md"})
-    )
+    await replace_doc_drift_references(async_session, repo.id, [], scope=frozenset({"docs/a.md"}))
     await async_session.commit()
 
     remaining = await _rows(async_session, repo.id)
@@ -139,14 +140,10 @@ async def test_scoped_write_refuses_a_row_outside_its_scope(async_session):
 
 async def test_unscoped_write_replaces_the_repository(async_session):
     repo = await insert_repo(async_session)
-    await replace_doc_drift_references(
-        async_session, repo.id, [_ref(doc_path="docs/a.md")]
-    )
+    await replace_doc_drift_references(async_session, repo.id, [_ref(doc_path="docs/a.md")])
     await async_session.commit()
 
-    await replace_doc_drift_references(
-        async_session, repo.id, [_ref(doc_path="docs/b.md")]
-    )
+    await replace_doc_drift_references(async_session, repo.id, [_ref(doc_path="docs/b.md")])
     await async_session.commit()
 
     assert [r.document_path for r in await _rows(async_session, repo.id)] == ["docs/b.md"]
@@ -166,9 +163,7 @@ async def test_reader_narrows_by_target(async_session):
     )
     await async_session.commit()
 
-    rows = await get_doc_drift_references(
-        async_session, repo.id, target_paths=["src/auth.py"]
-    )
+    rows = await get_doc_drift_references(async_session, repo.id, target_paths=["src/auth.py"])
     assert [r.document_path for r in rows] == ["docs/a.md", "docs/b.md"]
 
 
@@ -211,10 +206,7 @@ async def test_stored_probe_separates_never_computed_from_genuinely_none(async_s
 
     assert await doc_drift_references_stored(async_session, repo.id) is True
     # A file nothing names, in a repository that was analysed: a real zero.
-    assert (
-        await get_doc_drift_references(async_session, repo.id, target_paths=["src/x.py"])
-        == []
-    )
+    assert await get_doc_drift_references(async_session, repo.id, target_paths=["src/x.py"]) == []
 
 
 async def test_the_probe_is_scoped_to_its_own_repository(async_session):
@@ -282,3 +274,19 @@ async def test_serializer_drops_an_empty_section(async_session):
 
     (row,) = await get_doc_drift_references(async_session, repo.id)
     assert "section" not in serialize_doc_drift_reference_row(row)
+
+
+async def test_the_store_lists_each_referencing_document_once(async_session):
+    repo = await insert_repo(async_session)
+    await replace_doc_drift_references(
+        async_session,
+        repo.id,
+        [
+            _ref(doc_path="docs/a.md", line=1),
+            _ref(doc_path="docs/a.md", line=2, target_path="src/b.py"),
+            _ref(doc_path="README.md", line=5),
+        ],
+    )
+    await async_session.commit()
+
+    assert await get_doc_drift_document_paths(async_session, repo.id) == {"docs/a.md", "README.md"}

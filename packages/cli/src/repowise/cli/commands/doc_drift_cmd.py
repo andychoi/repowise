@@ -9,6 +9,7 @@ the same rows the same way. They still differ where the caller asks them to:
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,22 @@ _NO_INDEX = object()
 _STALE_INDEX = object()
 
 
+@dataclass
+class _DriftRead:
+    """Findings plus the coverage that makes "no findings" meaningful.
+
+    ``referencing_documents`` is every document with a stored resolved
+    reference; with the documents that carry findings it is the set the pass
+    could check. ``analysis_ran`` is whether any drift row exists at all, the
+    persistence layer's own "empty vs never analysed" probe. ``None`` means
+    the coverage query itself failed, and is reported as unknown.
+    """
+
+    findings: list[dict[str, Any]]
+    referencing_documents: set[str] | None
+    analysis_ran: bool | None
+
+
 def _repo_path(path: str | None, repo_alias: str | None, no_workspace: bool, fmt: str) -> Path:
     """The repository to read. One repo: a drift finding belongs to one tree."""
     target = resolve_command_target(
@@ -43,7 +60,12 @@ async def _read(root: Path, *, min_confidence: float | None, kinds: tuple[str, .
     """Persisted findings for *root*, or :data:`_NO_INDEX` when there is none."""
     from sqlalchemy.exc import SQLAlchemyError
 
-    from repowise.core.persistence.crud import get_doc_drift_findings, serialize_doc_drift_row
+    from repowise.core.persistence.crud import (
+        doc_drift_findings_stored,
+        get_doc_drift_document_paths,
+        get_doc_drift_findings,
+        serialize_doc_drift_row,
+    )
 
     async with repo_index_session(root) as opened:
         if opened is None:
@@ -62,17 +84,39 @@ async def _read(root: Path, *, min_confidence: float | None, kinds: tuple[str, .
         # the filter would ride on is the one already being done.
         if kinds:
             rows = [r for r in rows if r.kind in kinds]
-        return [serialize_doc_drift_row(r) for r in rows]
+        findings = [serialize_doc_drift_row(r) for r in rows]
+        try:
+            referencing = await get_doc_drift_document_paths(session, repo_id)
+            ran = bool(referencing) or await doc_drift_findings_stored(session, repo_id)
+        except (SQLAlchemyError, OSError, LookupError):
+            referencing, ran = None, None
+        return _DriftRead(findings, referencing, ran)
 
 
 def _payload(
-    root: Path, findings: list[dict[str, Any]], min_confidence: float | None
+    root: Path, result: _DriftRead | list[dict[str, Any]], min_confidence: float | None
 ) -> dict[str, Any]:
+    if isinstance(result, _DriftRead):
+        findings, referencing, ran = (
+            result.findings,
+            result.referencing_documents,
+            result.analysis_ran,
+        )
+    else:
+        findings, referencing, ran = result, None, None
+    with_findings = {f["file_path"] for f in findings}
     return {
         "repo": str(root),
         "min_confidence": min_confidence,
         "total": len(findings),
-        "documents": len({f["file_path"] for f in findings}),
+        # ``documents`` always meant documents *with findings*; kept as an alias.
+        "documents": len(with_findings),
+        "documents_with_findings": len(with_findings),
+        # The denominator: documents that name code, the only ones that can drift.
+        "documents_with_references": (
+            len(referencing | with_findings) if referencing is not None else None
+        ),
+        "analysis_status": ("unknown" if ran is None else "analyzed" if ran else "not_analyzed"),
         "confidence": bucket_confidences(f["confidence"] for f in findings),
         "findings_basis": DETECTION_BASIS,
         "findings": findings,
@@ -95,7 +139,19 @@ def _render(payload: dict[str, Any]) -> None:
     # and a 0.90 path would print two headers for itself.
     findings = sorted(payload["findings"], key=lambda f: (f["file_path"], f["line_number"]))
     if not findings:
-        console.print("No documentation drift found.")
+        status = payload.get("analysis_status")
+        checked = payload.get("documents_with_references")
+        if status == "not_analyzed":
+            console.print(
+                "Documentation drift has not been analysed for this index yet "
+                "(no stored references or findings). Run 'repowise update'."
+            )
+        elif checked is not None:
+            console.print(
+                f"No documentation drift found across {checked} document(s) that reference code."
+            )
+        else:
+            console.print("No documentation drift found.")
         console.print(f"[dim]{escape(DETECTION_BASIS)}[/dim]")
         return
 

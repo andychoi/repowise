@@ -36,6 +36,7 @@ class _Row:
 
 def _invoke(monkeypatch, tmp_path, result, args=()):
     monkeypatch.setattr(doc_drift_cmd, "_repo_path", lambda *a, **k: tmp_path)
+
     def _run(coro):
         # Close it rather than leaking an un-awaited coroutine warning, the way
         # ``test_tool_adapter_commands._spy_run`` does.
@@ -172,6 +173,15 @@ def test_kind_and_confidence_filters_reach_the_query_and_the_rows(monkeypatch, t
 
     monkeypatch.setattr(crud, "get_doc_drift_findings", _fake)
 
+    async def _paths(_session, _repo_id):
+        return {"docs/a.md"}
+
+    async def _stored(_session, _repo_id):
+        return True
+
+    monkeypatch.setattr(crud, "get_doc_drift_document_paths", _paths)
+    monkeypatch.setattr(crud, "doc_drift_findings_stored", _stored)
+
     @contextlib.asynccontextmanager
     async def _cm(_root):
         yield (object(), "repo-id")
@@ -181,7 +191,7 @@ def test_kind_and_confidence_filters_reach_the_query_and_the_rows(monkeypatch, t
     got = asyncio.run(doc_drift_cmd._read(tmp_path, min_confidence=0.9, kinds=("anchor",)))
 
     assert seen["min_confidence"] == 0.9
-    assert [f["kind"] for f in got] == ["anchor"]
+    assert [f["kind"] for f in got.findings] == ["anchor"]
 
 
 def test_min_confidence_defaults_to_showing_what_the_index_stored(monkeypatch, tmp_path):

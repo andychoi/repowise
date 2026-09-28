@@ -95,3 +95,22 @@ matching tag at https://github.com/andychoi/repowise.
   - `tests/unit/cli/test_cli_reference_flags.py` asserts every first-column flag
     in every command's option table is declared by the live Click command
     (subcommand flags count for group sections).
+
+### E7: `doc-drift` states how many documents it checked
+
+- **Before:** the JSON `documents` field counted documents *with findings*, so a
+  clean run read `documents: 0`, which is indistinguishable from "nothing was
+  checked". One consumer's evidence projector wrote exactly that wrong claim.
+  An index where the pass never ran also printed "No documentation drift found."
+- **Now:** the payload adds:
+  - `documents_with_findings` (`documents` kept as an alias);
+  - `documents_with_references`: the documents that name code, from the stored
+    reference index plus the documents with findings (a drifted reference
+    resolves to nothing, so its document isn't in the index);
+  - `analysis_status`: `analyzed` / `not_analyzed` / `unknown`.
+
+  The table says "No documentation drift found across N document(s) that
+  reference code", or that the pass has not run. There is no state plumbing: the
+  count comes from the store, so partial `update` passes stay correct.
+- **Detect:** `doc-drift --format json` → `documents_with_references`,
+  `analysis_status`.

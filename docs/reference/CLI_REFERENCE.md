@@ -767,6 +767,14 @@ Exits non-zero when there is no readable index, or when the index predates
 drift storage; in both cases `--format json` still emits a document naming the
 reason, rather than an empty finding list that would read as a clean tree.
 
+The JSON states its own coverage. `documents_with_findings` counts documents
+carrying a finding (`documents` is the same number, kept as an alias; it never
+meant documents checked). `documents_with_references` counts the documents that
+name code, which are the only ones that can drift. `analysis_status` is
+`analyzed`, `not_analyzed` (no stored reference or finding: the pass has not
+run on this index), or `unknown`. A clean run therefore reads "no drift across
+N documents that reference code", never a bare zero.
+
 ---
 
 ### `repowise risk [REVSPEC]`

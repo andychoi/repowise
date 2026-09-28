@@ -40,6 +40,7 @@ from .dead_code import (
 from .doc_drift import (
     doc_drift_findings_stored,
     doc_drift_references_stored,
+    get_doc_drift_document_paths,
     get_doc_drift_findings,
     get_doc_drift_references,
     replace_doc_drift_findings,
@@ -128,6 +129,7 @@ __all__ = [
     "get_dead_code_findings",
     "get_dead_code_summary",
     "get_deduction_by_path",
+    "get_doc_drift_document_paths",
     "get_doc_drift_findings",
     "get_doc_drift_references",
     "get_file_language_map",
