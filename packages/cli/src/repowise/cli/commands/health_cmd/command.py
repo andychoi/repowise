@@ -35,7 +35,9 @@ from repowise.core.analysis.health.models import split_by_origin
 from repowise.core.analysis.health.scope import DEFAULT_SCOPE, SCOPES, parse_scope
 from repowise.core.analysis.health.scoring import compute_kpis, present_kpis
 
+from .bounds import SEVERITY_ORDER, bound_output
 from .codegen import _generate_refactoring_code
+from .from_index import read_health_from_index
 from .persist import _load_persisted_coverage_map, _load_recommendations, _persist_health
 from .refactoring_targets import _render_refactoring_targets
 from .summary import (
@@ -46,6 +48,97 @@ from .summary import (
     _render_split_line,
 )
 from .trends import _render_trend
+
+
+def _metric_row(m) -> dict:
+    return {
+        "file_path": m.file_path,
+        "score": m.score,
+        "max_ccn": m.max_ccn,
+        "max_nesting": m.max_nesting,
+        "nloc": m.nloc,
+        "has_test_file": m.has_test_file,
+        "line_coverage_pct": m.line_coverage_pct,
+        "branch_coverage_pct": m.branch_coverage_pct,
+        "duplication_pct": m.duplication_pct,
+    }
+
+
+def _finding_row(f) -> dict:
+    return {
+        "biomarker_type": f.biomarker_type,
+        "severity": str(f.severity),
+        "file_path": f.file_path,
+        "function_name": f.function_name,
+        "health_impact": f.health_impact,
+        "details": f.details,
+        "reason": f.reason,
+    }
+
+
+def _render_markdown(kpis: dict, findings: list) -> None:
+    click.echo("# Code Health Report\n")
+    for k, v in kpis.items():
+        click.echo(f"- **{k}**: {v}")
+    click.echo("\n## Findings\n")
+    for f in findings:
+        click.echo(
+            f"- [{f.severity}] `{f.file_path}` {f.function_name or ''} "
+            f"- {f.reason} (impact -{f.health_impact:.2f})"
+        )
+
+
+def _health_from_index(
+    repo_path,
+    *,
+    fmt: str,
+    file_filter: str | None,
+    module_filter: str | None,
+    top: int | None,
+    min_severity: str | None,
+    live_only: list[str],
+) -> None:
+    """``--from-index``: print the stored report without re-running the analyzer."""
+    if fmt == "table":
+        raise click.UsageError(
+            "--from-index prints machine-readable output: use --format json or md."
+        )
+    if live_only:
+        raise click.UsageError(
+            f"{', '.join(live_only)} need(s) a live analysis; drop --from-index to use them."
+        )
+    state = load_state(repo_path)
+    read = run_async(
+        read_health_from_index(
+            repo_path,
+            file_filter=file_filter,
+            module_filter=module_filter,
+            history_available=state.get("git_history") != "unavailable",
+        )
+    )
+    if read is None:
+        raise click.ClickException(
+            f"No stored health report at {repo_path}. Run 'repowise init' or "
+            "'repowise update' there, or drop --from-index to analyze live."
+        )
+    kpis, metrics, findings = read
+    metrics, findings, bounds = bound_output(metrics, findings, top=top, min_severity=min_severity)
+    if fmt == "md":
+        _render_markdown(kpis, findings)
+        return
+    click.echo(
+        json.dumps(
+            {
+                "source": "index",
+                "indexed_commit": state.get("last_sync_commit"),
+                "output": bounds,
+                "kpis": kpis,
+                "metrics": [_metric_row(m) for m in metrics],
+                "findings": [_finding_row(f) for f in findings],
+            },
+            indent=2,
+        )
+    )
 
 
 def _hotspot_label(kpis: dict) -> str:
@@ -131,6 +224,29 @@ def _hotspot_label(kpis: dict) -> str:
     ),
 )
 @click.option(
+    "--top",
+    "top",
+    type=click.IntRange(min=1),
+    default=None,
+    help="Emit only the N lowest-scoring files and the N most severe findings. "
+    "The JSON reports the totals it left out.",
+)
+@click.option(
+    "--min-severity",
+    "min_severity",
+    type=click.Choice(SEVERITY_ORDER),
+    default=None,
+    help="Only findings at or above this severity.",
+)
+@click.option(
+    "--from-index",
+    "from_index",
+    is_flag=True,
+    default=False,
+    help="Read the health report the last init/update stored instead of "
+    "re-running the analyzer. Fast and read-only; --format json or md.",
+)
+@click.option(
     "--trend",
     "trend_view",
     is_flag=True,
@@ -162,6 +278,9 @@ def health_command(
     module_filter: str | None,
     scope: str,
     counts: str,
+    top: int | None,
+    min_severity: str | None,
+    from_index: bool,
     trend_view: bool,
     badge_view: bool,
     verbose: bool,
@@ -221,6 +340,28 @@ def health_command(
                 "do not apply to it.[/dim]"
             )
         _render_trend(repo_path, fmt=fmt)
+        return
+
+    if from_index:
+        _health_from_index(
+            repo_path,
+            fmt=fmt,
+            file_filter=file_filter,
+            module_filter=module_filter,
+            top=top,
+            min_severity=min_severity,
+            live_only=[
+                name
+                for name, used in (
+                    ("--refactoring-targets", refactoring_targets),
+                    ("--generate-code", generate_code is not None),
+                    ("--badge", badge_view),
+                    ("--scope production", parse_scope(scope) != DEFAULT_SCOPE),
+                    ("--counts code_shape", parse_counts(counts) != DEFAULT_COUNTS),
+                )
+                if used
+            ],
+        )
         return
 
     # Analyze the same file set that was indexed: a repo initialized with
@@ -387,39 +528,21 @@ def health_command(
         _render_badge(report.kpis.get("average_health"))
         return
 
+    metrics_sorted, findings, bounds = bound_output(
+        metrics_sorted, findings, top=top, min_severity=min_severity
+    )
+
     if fmt == "json":
         click.echo(
             json.dumps(
                 {
+                    "source": "live",
+                    "output": bounds,
                     "kpis": report.kpis,
                     "scope": parse_scope(scope),
                     "counts": parse_counts(counts),
-                    "metrics": [
-                        {
-                            "file_path": m.file_path,
-                            "score": m.score,
-                            "max_ccn": m.max_ccn,
-                            "max_nesting": m.max_nesting,
-                            "nloc": m.nloc,
-                            "has_test_file": m.has_test_file,
-                            "line_coverage_pct": m.line_coverage_pct,
-                            "branch_coverage_pct": m.branch_coverage_pct,
-                            "duplication_pct": m.duplication_pct,
-                        }
-                        for m in metrics_sorted
-                    ],
-                    "findings": [
-                        {
-                            "biomarker_type": f.biomarker_type,
-                            "severity": str(f.severity),
-                            "file_path": f.file_path,
-                            "function_name": f.function_name,
-                            "health_impact": f.health_impact,
-                            "details": f.details,
-                            "reason": f.reason,
-                        }
-                        for f in findings
-                    ],
+                    "metrics": [_metric_row(m) for m in metrics_sorted],
+                    "findings": [_finding_row(f) for f in findings],
                 },
                 indent=2,
             )
@@ -427,15 +550,7 @@ def health_command(
         return
 
     if fmt == "md":
-        click.echo("# Code Health Report\n")
-        for k, v in report.kpis.items():
-            click.echo(f"- **{k}**: {v}")
-        click.echo("\n## Findings\n")
-        for f in findings:
-            click.echo(
-                f"- [{f.severity}] `{f.file_path}` {f.function_name or ''} "
-                f"- {f.reason} (impact -{f.health_impact:.2f})"
-            )
+        _render_markdown(report.kpis, findings)
         return
 
     # Table format

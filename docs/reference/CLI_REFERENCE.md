@@ -982,6 +982,11 @@ Compute per-file code-health scores from 51 deterministic detectors (McCabe comp
 | `--generate-code <selector>` | Generate an actual refactoring patch for one target. The only `health` flag that calls an LLM; needs a configured provider. |
 | `--trend` | Print the last 10 health snapshots + any active alerts (declining / predicted decline) |
 | `--badge` | Print a shields.io-compatible badge URL/JSON for the repo's health score |
+| `--top` | Emit only the N lowest-scoring files and the N most severe findings (severity, then impact). The JSON `output` block reports `metrics_total` / `metrics_emitted`, `findings_total` / `findings_matching` / `findings_emitted` and `truncated` |
+| `--min-severity` | Only findings at or above `low` / `medium` / `high` / `critical`. `findings_total` stays the unfiltered count; `findings_matching` is what passed the floor |
+| `--from-index` | Read the report the last `init` / `update` stored instead of re-parsing and re-analyzing: sub-second and read-only, and the KPIs match `repowise status`. `--format json` or `md` only; `--refactoring-targets`, `--generate-code`, `--badge`, `--scope production` and `--counts code_shape` need a live run. The JSON carries `source: "index"` and `indexed_commit` |
+
+The default (live) run re-analyzes the tree on every call, and in `table` format with no `--file` / `--module` it also overwrites the stored health tables and snapshot. `--format json` / `md` live runs never write. Live and stored figures can differ slightly (the live run re-derives git signals and exclusions), so pick one source per comparison.
 | `--format` | Output: `table` (default), `json`, `md` |
 | `--repo` | In workspace mode, target a specific repo (defaults to primary) |
 | `--no-workspace` | Force single-repo mode |

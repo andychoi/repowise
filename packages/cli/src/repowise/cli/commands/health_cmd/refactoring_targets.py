@@ -126,9 +126,7 @@ def _render_refactoring_targets(
             json.dumps(
                 {
                     "targets": targets,
-                    "refactoring_opportunities": [
-                        _opportunity_row(o) for o in opportunities
-                    ],
+                    "refactoring_opportunities": [_opportunity_row(o) for o in opportunities],
                     "refactoring_plans": ranked_plans,
                 },
                 indent=2,
@@ -266,9 +264,7 @@ def _render_opportunities_console(opportunities: list, plan_by_id: dict) -> None
     if not opportunities:
         return
     console.print(f"\n[bold]Refactoring opportunities ({len(opportunities)})[/bold]")
-    console.print(
-        "[dim]One per file, in rank order. Steps are in dependency-safe order.[/dim]"
-    )
+    console.print("[dim]One per file, in rank order. Steps are in dependency-safe order.[/dim]")
     for rank, o in enumerate(opportunities, 1):
         mech = sum(1 for s in o.steps if s.applicability.classification == "mechanical")
         console.print(
@@ -321,13 +317,10 @@ def _render_opportunities_md(opportunities: list, plan_by_id: dict) -> None:
             mark = "mechanical" if s.applicability.classification == "mechanical" else "judgment"
             span = f":{s.line_start}-{s.line_end}" if s.line_start else ""
             click.echo(
-                f"   {i}. {s.refactoring_type} **{s.target_symbol}** "
-                f"({s.file_path}{span}) - {mark}"
+                f"   {i}. {s.refactoring_type} **{s.target_symbol}** ({s.file_path}{span}) - {mark}"
             )
             if s.relocated_by:
-                click.echo(
-                    "    - moved by an earlier step; locate it again before applying"
-                )
+                click.echo("    - moved by an earlier step; locate it again before applying")
             for line in _plan_detail_md(plan_by_id.get(s.plan_id, {})):
                 click.echo(line)
             if s.applicability.unknowns:
@@ -351,8 +344,7 @@ def _render_unattached_console(plans: list[dict]) -> None:
         return
     console.print(f"\n[bold]Unattached observations ({len(plans)})[/bold]")
     console.print(
-        "[dim]Real duplication, not ranked work: no file's opportunity is built "
-        "on them.[/dim]"
+        "[dim]Real duplication, not ranked work: no file's opportunity is built on them.[/dim]"
     )
     for p in plans:
         console.print(f"\n[cyan]{p['target_symbol']}[/cyan] [dim]({p['file_path']})[/dim]")
@@ -364,9 +356,7 @@ def _render_unattached_md(plans: list[dict]) -> None:
     if not plans:
         return
     click.echo("\n## Unattached observations\n")
-    click.echo(
-        "Real duplication, not ranked work: no file's opportunity is built on them.\n"
-    )
+    click.echo("Real duplication, not ranked work: no file's opportunity is built on them.\n")
     for p in plans:
         click.echo(f"- **{p['target_symbol']}** ({p['file_path']})")
         for line in _plan_detail_md(p):
@@ -469,9 +459,7 @@ def _plan_detail_md(p: dict) -> list[str]:
 
     if kind == "extract_class":
         groups = pl.get("groups", [])
-        out.append(
-            f"    - LCOM4={ev.get('lcom4')}, split into {len(groups)} classes:"
-        )
+        out.append(f"    - LCOM4={ev.get('lcom4')}, split into {len(groups)} classes:")
         for i, g in enumerate(groups, 1):
             fields = ", ".join(g["fields"]) or "-"
             out.append(f"      {i}. methods: {', '.join(g['methods'])}  ·  fields: {fields}")

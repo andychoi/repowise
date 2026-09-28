@@ -114,3 +114,24 @@ matching tag at https://github.com/andychoi/repowise.
   count comes from the store, so partial `update` passes stay correct.
 - **Detect:** `doc-drift --format json` → `documents_with_references`,
   `analysis_status`.
+
+### E8: `health` output can be bounded, and read from the index
+
+- **Before:** `health --format json` re-parsed and re-analyzed the whole tree on
+  every call (146 s and 9.7 MB on a 3,370-file repo) and had no way to bound its
+  output.
+- **Now:**
+  - `--top N` keeps the N lowest-scoring files and the N most severe findings.
+  - `--min-severity` sets a finding floor.
+  - The JSON gains an `output` block (`metrics_total/_emitted`,
+    `findings_total/_matching/_emitted`, `truncated`) and `source`.
+  - `--from-index` reads the stored report through the same CRUD the MCP
+    `get_health` tool uses: sub-second, read-only, KPIs identical to `status`,
+    `json`/`md` only.
+  - Measured on the `ams` clone: 0.53 s, 19.7 KB for `--from-index --top 25`.
+- **Correction to the plan:** only the default `table` run with no
+  `--file`/`--module` writes the health tables; `json`/`md` live runs never did.
+- **Known, not changed:** the live analyzer and the stored index can disagree
+  slightly (on `ams`: hotspot 5.24 live vs 4.74 stored). That is upstream
+  behavior; pick one source per comparison.
+- **Detect:** `health --format json` → `source`, `output.truncated`.
