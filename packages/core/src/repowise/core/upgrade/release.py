@@ -44,7 +44,9 @@ def parse_release(version: str) -> tuple[int, ...] | None:
     ``None`` when no numeric component can be parsed.
     """
     parts: list[int] = []
-    for chunk in version.strip().split("."):
+    # The local segment is not part of the release: "0.53.0+aai.1" is 0.53.0.
+    # Split it off first, or its digits read as a fourth release component.
+    for chunk in version.strip().split("+", 1)[0].split("."):
         digits = ""
         for ch in chunk:
             if ch.isdigit():
@@ -55,6 +57,21 @@ def parse_release(version: str) -> tuple[int, ...] | None:
             break
         parts.append(int(digits))
     return tuple(parts) or None
+
+
+#: Local-version prefix of the a-ai.solutions fork builds (``0.53.0+aai.1``).
+PRACTICE_BUILD_TAG = "aai"
+
+
+def is_practice_build(version: str) -> bool:
+    """True for a fork build carrying the practice's local version segment.
+
+    Such a build is distributed from a practice wheelhouse, not PyPI, so the
+    generic upgrade advice (``pip install -U repowise``) would silently replace
+    it with a stock release and drop its fixes.
+    """
+    _, _, local = version.strip().partition("+")
+    return local.split(".", 1)[0] == PRACTICE_BUILD_TAG
 
 
 def is_newer_version(latest: str, current: str) -> bool:

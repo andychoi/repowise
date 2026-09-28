@@ -29,6 +29,7 @@ from repowise.core.upgrade.release import (
     DEFAULT_TTL_HOURS,
     fetch_latest_version,
     is_newer_version,
+    is_practice_build,
 )
 
 __all__ = [
@@ -110,6 +111,23 @@ def _editable_checkout() -> Path | None:
     return None
 
 
+#: What a practice (fork) build tells its user instead of a PyPI upgrade.
+PRACTICE_BUILD_ADVICE = (
+    "install the next +aai release from the practice wheelhouse "
+    "(`pip install -U repowise` would replace this build with stock PyPI and drop its fixes)"
+)
+
+
+def _upgrade_advice(current: str, executable: str | None, python: str) -> tuple[str, str]:
+    """``(suggested_command, install_hint)`` for this install."""
+    if is_practice_build(current):
+        return PRACTICE_BUILD_ADVICE, "practice_build"
+    checkout = _editable_checkout()
+    if checkout is not None:
+        return f"cd {checkout} && git pull && {python} -m pip install -e .", "editable"
+    return suggest_update_command(executable, python)
+
+
 def get_cli_update_check(timeout: float = 2.0) -> UpdateCheck:
     """Check whether the installed ``repowise`` CLI is out of date.
 
@@ -124,12 +142,7 @@ def get_cli_update_check(timeout: float = 2.0) -> UpdateCheck:
     running = sys.argv[0] if sys.argv else ""
     python = sys.executable or "python"
 
-    checkout = _editable_checkout()
-    if checkout is not None:
-        suggested = f"cd {checkout} && git pull && {python} -m pip install -e ."
-        hint = "editable"
-    else:
-        suggested, hint = suggest_update_command(resolved or running, python)
+    suggested, hint = _upgrade_advice(current, resolved or running, python)
 
     latest, error = fetch_latest_version(timeout=timeout)
     if latest is None:
@@ -169,12 +182,7 @@ def _build_from_cached_latest(latest: str | None, error: str | None) -> UpdateCh
     resolved = shutil.which("repowise")
     running = sys.argv[0] if sys.argv else ""
     python = sys.executable or "python"
-    checkout = _editable_checkout()
-    if checkout is not None:
-        suggested = f"cd {checkout} && git pull && {python} -m pip install -e ."
-        hint = "editable"
-    else:
-        suggested, hint = suggest_update_command(resolved or running, python)
+    suggested, hint = _upgrade_advice(current, resolved or running, python)
     update_available = is_newer_version(latest, current) if latest else None
     return UpdateCheck(
         current_version=current,
