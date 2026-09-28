@@ -233,6 +233,17 @@ class GitIndexSummary:
     # (issue #730). None when git is unavailable or the repo has no commits.
     repo_totals: RepoTotals | None = None
     history_coverage: GitHistoryCoverage | None = None
+    # Whether history was actually read. The early returns all produce the same
+    # zero summary, so without this a plain directory, a partial clone whose
+    # history was skipped, and a repository with nothing tracked are
+    # indistinguishable from a clean, quiet repo. One of HISTORY_STATUSES.
+    history_status: str = "indexed"
+
+
+#: ``indexed`` is the only status in which history-derived signals mean
+#: anything; every other status reports them as unavailable, not as zero.
+HISTORY_STATUSES = ("indexed", "no_repository", "partial_clone_skipped", "no_tracked_files")
+HISTORY_UNAVAILABLE_STATUSES = frozenset(HISTORY_STATUSES[1:])
 
 
 _RENAME_RE = re.compile(r"\{(.*?) => (.*?)\}")
@@ -401,10 +412,7 @@ def _folded_churn(
 
     if prior.total_commit_count + since_count != commit_count:
         return None
-    if (
-        prior.total_commit_count // _CHURN_REANCHOR_STRIDE
-        != commit_count // _CHURN_REANCHOR_STRIDE
-    ):
+    if prior.total_commit_count // _CHURN_REANCHOR_STRIDE != commit_count // _CHURN_REANCHOR_STRIDE:
         return None
 
     added, deleted = _walk_churn(repo, f"{anchor}..{head_sha}")

@@ -105,9 +105,7 @@ def git_worker_count(
     affinity_count = getattr(os, "process_cpu_count", None)
     cpus = cpu_count or (affinity_count() if affinity_count else None) or os.cpu_count() or 1
     available = (
-        available_memory_bytes
-        if available_memory_bytes is not None
-        else _available_memory_bytes()
+        available_memory_bytes if available_memory_bytes is not None else _available_memory_bytes()
     )
     memory_workers = _MAX_GIT_WORKERS
     if available is not None:
@@ -198,18 +196,20 @@ class GitIndexer:
         start = time.monotonic()
         repo = self._get_repo()
         if repo is None:
-            return GitIndexSummary(0, 0, 0, 0.0), []
+            return GitIndexSummary(0, 0, 0, 0.0, history_status="no_repository"), []
 
         if self._skip_partial_clone_history(repo, on_warning=on_warning):
             if on_start is not None:
                 on_start(0)
             with contextlib.suppress(Exception):
                 repo.close()
-            return GitIndexSummary(0, 0, 0, time.monotonic() - start), []
+            return GitIndexSummary(
+                0, 0, 0, time.monotonic() - start, history_status="partial_clone_skipped"
+            ), []
 
         tracked_files = self._get_tracked_files(repo)
         if not tracked_files:
-            return GitIndexSummary(0, 0, 0, 0.0), []
+            return GitIndexSummary(0, 0, 0, 0.0, history_status="no_tracked_files"), []
 
         # Only run expensive per-file indexing (git log + blame) on code files.
         indexable_files = [fp for fp in tracked_files if not _should_skip_index(fp)]
@@ -463,9 +463,7 @@ class GitIndexer:
                     1 for row in results if int(row.get("commit_count_total", 0)) > 0
                 ),
                 unavailable_files=sum(1 for row in results if "commit_count_total" not in row),
-                retained_commits=sum(
-                    int(row.get("commit_count_total", 0)) for row in results
-                ),
+                retained_commits=sum(int(row.get("commit_count_total", 0)) for row in results),
                 per_file_limit=self.commit_limit,
                 global_commits=global_commits,
                 deep_commits=deep_commits,

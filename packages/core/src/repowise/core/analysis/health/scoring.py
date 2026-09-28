@@ -829,6 +829,44 @@ def hotspot_health(
     return round(nloc_weighted_score(rows), 2)
 
 
+#: History-derived KPI keys. With no version-control history they measure
+#: nothing, and a zero deduction reads as "clean history".
+_HISTORY_KPI_KEYS = ("history_average", "history_hotspot")
+
+
+def present_kpis(
+    kpis: dict[str, object],
+    hotspot_paths: set[str],
+    *,
+    history_available: bool,
+) -> dict[str, object]:
+    """The KPI dict as a reader should see it, not as the snapshot stores it.
+
+    :func:`compute_kpis` floors ``hotspot_health`` to 10.0 because the snapshot
+    column is non-nullable and the trend alerts diff it. Shown to a person or a
+    script, that floor says "your hotspots are perfect" about a repo that has
+    none, or about a code drop with no history at all. This returns a copy with
+    ``hotspot_health`` set to ``None`` in those cases and a
+    ``hotspot_health_basis`` of ``no_history``, ``no_hotspots`` or
+    ``hotspot_files``, so a caller branches on the basis rather than guessing
+    from the number. With no history the history-derived averages are nulled
+    too. The persisted dict is never mutated.
+    """
+    out = dict(kpis)
+    if not history_available:
+        out["hotspot_health"] = None
+        out["hotspot_health_basis"] = "no_history"
+        for key in _HISTORY_KPI_KEYS:
+            if key in out:
+                out[key] = None
+    elif not hotspot_paths:
+        out["hotspot_health"] = None
+        out["hotspot_health_basis"] = "no_hotspots"
+    else:
+        out["hotspot_health_basis"] = "hotspot_files"
+    return out
+
+
 def compute_kpis(
     metrics: list[HealthFileMetricData],
     hotspot_paths: set[str],
@@ -900,8 +938,6 @@ def compute_kpis(
         "performance_average": round(perf_avg, 2) if perf_avg is not None else None,
         "performance_hotspot": round(perf_hotspot, 2) if perf_hotspot is not None else None,
         **{k: round(v, 2) if v is not None else None for k, v in splits.items()},
-        "production_average": (
-            round(nloc_weighted_score(production), 2) if production else None
-        ),
+        "production_average": (round(nloc_weighted_score(production), 2) if production else None),
         "production_file_count": len(production),
     }

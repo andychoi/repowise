@@ -33,7 +33,7 @@ from repowise.core.analysis.health.counts import (
 )
 from repowise.core.analysis.health.models import split_by_origin
 from repowise.core.analysis.health.scope import DEFAULT_SCOPE, SCOPES, parse_scope
-from repowise.core.analysis.health.scoring import compute_kpis
+from repowise.core.analysis.health.scoring import compute_kpis, present_kpis
 
 from .codegen import _generate_refactoring_code
 from .persist import _load_persisted_coverage_map, _load_recommendations, _persist_health
@@ -46,6 +46,19 @@ from .summary import (
     _render_split_line,
 )
 from .trends import _render_trend
+
+
+def _hotspot_label(kpis: dict) -> str:
+    """The hotspot figure for the summary line, or why there is none."""
+    value = kpis.get("hotspot_health")
+    if value is not None:
+        return f"[bold]{value}[/bold]/10"
+    basis = kpis.get("hotspot_health_basis")
+    if basis == "no_history":
+        return "[dim]n/a (no git history)[/dim]"
+    if basis == "no_hotspots":
+        return "[dim]n/a (no hotspot files)[/dim]"
+    return "[bold]?[/bold]/10"
 
 
 @click.command("health")
@@ -258,12 +271,16 @@ def health_command(
     graph_builder.build()
 
     git_meta_map: dict = {}
+    # False when there is no history to read (a code drop, no git binary):
+    # the history-derived KPIs are then reported as unmeasured, not as clean.
+    history_available = False
     try:
         from repowise.core.ingestion.git_indexer import GitIndexer
 
         git_indexer = GitIndexer(repo_path)
-        _, metadata_list = run_async(git_indexer.index_repo(""))
+        git_summary, metadata_list = run_async(git_indexer.index_repo(""))
         git_meta_map = {m["file_path"]: m for m in metadata_list}
+        history_available = getattr(git_summary, "history_status", "indexed") == "indexed"
     except Exception:
         pass
 
@@ -324,6 +341,12 @@ def health_command(
         report.kpis = compute_kpis(
             metrics, {p for p, m in git_meta_map.items() if m.get("is_hotspot")}
         )
+    # Persisted above with the snapshot's 10.0 floor; shown from here as measured.
+    report.kpis = present_kpis(
+        report.kpis,
+        {p for p, m in git_meta_map.items() if m.get("is_hotspot")},
+        history_available=history_available,
+    )
     metrics_sorted = sorted(metrics, key=lambda m: m.score)
 
     findings = report.findings
@@ -434,7 +457,7 @@ def health_command(
         band_str = f" [[{band_color}]{BAND_LABEL[band]}[/{band_color}]]"
     console.print(
         f"\nCode health: [bold]{avg if avg is not None else '?'}[/bold]/10{band_str} · "
-        f"Hotspot: [bold]{kpis.get('hotspot_health', '?')}[/bold]/10 · "
+        f"Hotspot: {_hotspot_label(kpis)} · "
         f"Worst: [bold]{kpis.get('worst_performer_score', '?')}[/bold]/10 "
         f"({kpis.get('worst_performer_path', 'n/a')})"
     )

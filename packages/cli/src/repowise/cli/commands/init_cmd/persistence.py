@@ -329,10 +329,25 @@ def effective_run_mode_for_resume(repo_path: Path, run_mode: str, resume: bool) 
 
 
 def apply_git_history_coverage_state(state: dict[str, Any], result: Any) -> None:
-    """Replace achieved Git coverage, clearing stale data when unavailable."""
+    """Replace achieved Git coverage, clearing stale data when unavailable.
+
+    A ``None`` summary means git indexing was skipped (no repository, no git
+    binary, an unreadable history). That is recorded as ``git_history:
+    "unavailable"`` so every surface can say "not measured" rather than report
+    the tier the run was configured for. ``git_tier`` itself is left alone: it
+    is the resume policy ``repowise update`` parses as a ``GitIndexTier``.
+    """
+    from repowise.core.ingestion.git_indexer.records import HISTORY_UNAVAILABLE_STATUSES
+
     summary = getattr(result, "git_summary", None)
-    if summary is None:
+    status = "failed" if summary is None else getattr(summary, "history_status", "indexed")
+    if summary is None or status in HISTORY_UNAVAILABLE_STATUSES:
+        state["git_history"] = "unavailable"
+        state["git_history_reason"] = status
+        state.pop("git_history_coverage", None)
         return
+    state.pop("git_history", None)
+    state.pop("git_history_reason", None)
     coverage = getattr(summary, "history_coverage", None)
     if coverage is None:
         state.pop("git_history_coverage", None)

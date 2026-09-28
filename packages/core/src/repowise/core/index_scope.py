@@ -112,6 +112,11 @@ def resolve_index_scope(
 
     run_mode = _choice(state.get("run_mode", scope.get("run_mode")), {"fast", "standard"})
     git_tier = _choice(state.get("git_tier", scope.get("git_tier")), {"essential", "full"})
+    # The tier a run was configured for is not history it read. A skipped git
+    # stage reports "none" here and names the gap in analysis.unavailable.
+    history_unavailable = state.get("git_history") == "unavailable"
+    if history_unavailable:
+        git_tier = "none"
     if isinstance(stored, Mapping):
         provenance = _choice(
             scope.get("content_provenance", provenance), {"none", "template", "model"}
@@ -121,6 +126,8 @@ def resolve_index_scope(
     degraded = state.get("degraded", [])
     if isinstance(unavailable, list) and isinstance(degraded, list):
         unavailable = [*unavailable, *degraded]
+    if history_unavailable and isinstance(unavailable, list):
+        unavailable = [*unavailable, "git_history"]
     skipped = analysis.get("skipped", [])
     return {
         "version": INDEX_SCOPE_VERSION,
