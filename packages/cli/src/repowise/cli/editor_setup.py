@@ -378,7 +378,7 @@ def write_editor_project_files(
 
 
 def _persist_project_file_optouts(repo_path: Path, options: EditorSetupOptions) -> None:
-    """Record ``--no-claude-md`` / ``--no-agents-md`` even when nothing is written.
+    """Record ``--no-claude-md`` / ``--no-agents`` (alias ``--no-agents-md``) even when nothing is written.
 
     Those flags mean "never generate this file", not "skip it this once", and
     the only thing that ever wrote them to ``config.yaml`` was the generator

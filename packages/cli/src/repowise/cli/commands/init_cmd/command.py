@@ -124,8 +124,7 @@ def _catch_up_savings(repo_path: Path) -> None:
         return
     if outcome.recorded:
         console.print(
-            f"  [{OK}]✓[/] Recovered {outcome.saved_input_tokens:,} saved tokens "
-            f"from agent history"
+            f"  [{OK}]✓[/] Recovered {outcome.saved_input_tokens:,} saved tokens from agent history"
         )
 
 
@@ -631,9 +630,13 @@ def _interactive_gate(
 )
 @click.option(
     "--agents/--no-agents",
+    # The reference documented --no-agents-md for this switch; both spellings
+    # are accepted so a documented invocation never fails with "No such option".
+    "--agents-md/--no-agents-md",
     "agents_md",
     default=None,
-    help="Generate managed AGENTS.md (default: config or enabled).",
+    help="Generate managed AGENTS.md (default: config or enabled). "
+    "--no-agents-md is an accepted alias of --no-agents.",
 )
 @click.option(
     "--codex/--no-codex",

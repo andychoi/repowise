@@ -78,3 +78,20 @@ matching tag at https://github.com/andychoi/repowise.
     candidacy. A hand-written `bootstrap.js` is still a legitimate entry.
 - **Detect:** `skipped_vendored` in traversal stats; vendored paths are absent
   from `health` and the overview entry points.
+
+### E6: every flag the CLI reference documents is one the command accepts
+
+- **Before:** the reference told readers to pass `--no-agents-md` to `init`; the
+  option was `--agents/--no-agents`, so the documented isolation invocation
+  failed with "No such option". Nothing checked the reference against the
+  commands. The new check found four more stale rows:
+  - `--workspace` on `search`, `dead-code` and `costs` (only `--no-workspace`
+    exists; workspace mode is auto-detected);
+  - `--primary` on `workspace add` (the command is `workspace set-default`).
+- **Now:**
+  - `--agents-md/--no-agents-md` is an accepted alias.
+  - The five rows are corrected, and `--save-key` is documented for
+    `workspace add`.
+  - `tests/unit/cli/test_cli_reference_flags.py` asserts every first-column flag
+    in every command's option table is declared by the live Click command
+    (subcommand flags count for group sections).

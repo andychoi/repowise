@@ -414,7 +414,7 @@ that gates an already-installed global rewrite hook off here.
 
 The same reasoning covers the instruction files: `--no-editor-setup
 --no-claude-md` still records `editor_files.claude_md: false`, and likewise for
-`--no-agents-md`. Those flags mean "never generate this file", not "skip it this
+`--no-agents` (alias `--no-agents-md`). Those flags mean "never generate this file", not "skip it this
 once", and the generator declining on its way past used to be the only thing
 that wrote the preference down — so suppressing the writes would also have
 suppressed the memory of the refusal, and the next `repowise update` would have
