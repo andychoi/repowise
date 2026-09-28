@@ -8,7 +8,21 @@ and how to detect it from a consumer.
 Licensed under AGPL-3.0, as upstream. Source for any deployed release is the
 matching tag at https://github.com/andychoi/repowise.
 
-## Unreleased (branch `aai/tier1`, based on upstream `v0.53.0`)
+## 0.53.0+aai.1 (2026-09-28, based on upstream `v0.53.0`)
+
+First practice build. Distributed from a practice wheelhouse, never PyPI. See
+`NOTICE` for the licence, the written source offer and the network-use (AGPL
+section 13) condition.
+
+### Release plumbing
+
+- The version is `0.53.0+aai.1` (PEP 440 local segment) in `pyproject.toml` and
+  the three `__version__` strings. The MCP registry and plugin manifests stay at
+  `0.53.0`: they describe the PyPI release, and the release-manifest test now
+  compares them to the public version.
+- A practice build is never told to `pip install -U` from PyPI (that would
+  silently replace it with stock); the update notice points to the wheelhouse.
+- `parse_release()` no longer reads the local segment as a release component.
 
 ### E1: `risk --target` no longer shortens its answer silently
 

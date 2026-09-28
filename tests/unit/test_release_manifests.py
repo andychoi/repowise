@@ -43,6 +43,14 @@ def package_version() -> str:
         return tomllib.load(handle)["project"]["version"]
 
 
+@pytest.fixture(scope="module")
+def public_version(package_version: str) -> str:
+    """The release the registries know: the package version minus any local
+    segment. A practice build (``0.53.0+aai.1``) ships from a wheelhouse, never
+    PyPI, so its registry and plugin manifests keep describing ``0.53.0``."""
+    return package_version.split("+", 1)[0]
+
+
 def _versions_under_test() -> list[tuple[str, str]]:
     """(label, dotted lookup) for every manifest that tracks the package."""
     return [
@@ -61,11 +69,11 @@ def _dig(data: object, dotted: str) -> object:
 
 @pytest.mark.parametrize(("relpath", "dotted"), _versions_under_test())
 def test_a_release_manifest_tracks_the_package_version(
-    relpath: str, dotted: str, package_version: str
+    relpath: str, dotted: str, public_version: str
 ) -> None:
     found = _dig(_read_json(relpath), dotted)
-    assert found == package_version, (
-        f"{relpath} {dotted} is {found!r}, pyproject.toml is {package_version!r}. "
+    assert found == public_version, (
+        f"{relpath} {dotted} is {found!r}, pyproject.toml is {public_version!r}. "
         "Every file this module names has to move together in a release commit."
     )
 

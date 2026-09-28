@@ -1,0 +1,35 @@
+repowise 0.53.0+aai.1 — a modified version of Repowise
+======================================================
+
+This software is Repowise (https://github.com/repowise-dev/repowise), licensed
+under the GNU Affero General Public License, version 3 or later (see LICENSE).
+
+It has been MODIFIED by a-ai.solutions. The modifications are based on the
+upstream release tagged v0.53.0 and are listed, one entry per change, in
+CHANGELOG-AAI.md at the root of the source tree. Modified: 2026-09-28.
+
+The modifications are licensed under the same terms (AGPL-3.0-or-later).
+This program comes with ABSOLUTELY NO WARRANTY, to the extent permitted by law.
+
+
+Written offer of Corresponding Source
+-------------------------------------
+
+The complete Corresponding Source for exactly this build, including every
+modification, is publicly available at no charge from:
+
+    https://github.com/andychoi/repowise/tree/v0.53.0+aai.1
+
+For as long as this version is distributed or deployed, that tag remains
+available. If it is ever unreachable, a copy of the Corresponding Source will
+be provided on request by the party that supplied you this build.
+
+
+Network use (AGPL section 13)
+-----------------------------
+
+Section 13 requires that users interacting with a modified version over a
+network be offered its source. This build adds no source link to the network
+surfaces (`repowise serve`, HTTP-transport MCP). Until it does, deploy it for
+CLI and stdio-MCP use only, or give every network user this notice and the
+source location above.
